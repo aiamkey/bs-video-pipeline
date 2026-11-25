@@ -110,6 +110,12 @@ check    文件大小 静止阈值 采样帧率
 | `tools/build_lib.py` | 按 library.json 补缺口（`--dry-run` / `--only`） |
 | `tools/cosy_chapter.py` | 按章配音 |
 | `tools/align_v2.py` | whisper 词级对齐 → timeline |
+| `pipeline/JIANYING.md` | **剪映衔接**（两条路线 + spec + 三件实现事实 + 9 条坑） |
+| `tools/jy_env.py` | 探测剪映安装/版本/草稿根/skill 路径 → 写 `tools/jy.env`（换设备第一步） |
+| `tools/jy.cmd` | 封装 `jyai.cli`（list / inspect / build / patch / repair / render） |
+| `tools/jy_draft.py` | spec(JSON) → 剪映工程（多轨 + 关键帧 + 动画 + 转场 + 滤镜） |
+| `tools/jy_from_film.py` | **film.json → 剪映工程**（底板/元素/字幕/配音自动分轨） |
+| `tools/jy_check.py` | 回读草稿校验（版本 / 轨 / 关键帧 / 素材数） |
 
 ---
 
@@ -516,6 +522,38 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
 
 ---
 
+## 8.5 剪映衔接（想手工微调时走这里）
+
+**什么时候值得进剪映**：加音效/花字、手动改字幕断句与样式、拖关键帧曲线。
+**什么时候别去**：批量出片、元素要跟语音变化、只是字幕不同步（改稿重跑更快）。
+
+两条路线（细节见 `pipeline/JIANYING.md`）：
+
+- **A 干净素材回剪映**：Remotion 导无字幕版 + `subtitles.srt` + `voice.wav` + `shots/`。
+- **B 直接出可编辑工程**（推荐）：`python tools\jy_from_film.py` 把 `film.json` 变成剪映草稿，
+  底板 / 元素 / 字幕 / 配音自动分轨，打开就是工程。
+
+```powershell
+# 换设备第一步（探测安装目录 / 版本 / 草稿根 / skill 路径）
+& $py tools\jy_env.py --write-env
+& $py tools\jy_env.py --check
+
+# film.json → 剪映工程
+& $py tools\jy_from_film.py --spec-out qa2\jy-spec-ep02.json
+& $py tools\jy_check.py "E:\剪映5.9版本免激活(1)\草稿\JianyingPro Drafts\EP02_剪映工程"
+```
+
+三条会毁掉整条工程的事实（`JIANYING.md` §4 有完整说明）：
+
+1. `tim()` 单位是**微秒**，传 `0.35` 会变 0；用 `us()` 或 `"0.35s"`。
+2. 装饰（动画/转场/滤镜/蒙版/淡入）必须写在 `add_segment()` **之前**，否则素材没登记、只留悬空引用。
+3. 剪映**同一轨道片段不能重叠**；元素要"停留到屏尾"就按 panel 内序号分轨。
+
+ep02 实测：轨 0 底板 11 段（scale 1.0→1.035）/ 轨 1–3 元素 24 个 / 轨 4 字幕 55 段 / 轨 5 配音，
+`new_version=110.0.0`、`issues=[]`。
+
+---
+
 ## 9. 现状
 
 **已完成**
@@ -529,6 +567,9 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
   `stock.py`（bing/commons/openverse/pexels + preview）、`assets.py`（list/check/add）、`build_lib.py`（缺口→批量生成）。
 - 成片：EP01 v6 103.1s；EP02 v3 117.5s（卡通 39%）；EP02 panel 版 117.5s（panel 覆盖 43%，自评 60 分）。
   演示：`cardtest-final.mp4`、`slides-final.mp4`、`panel-final.mp4`。
+- 剪映：`jy_env.py / jy.cmd / jy_draft.py / jy_from_film.py / jy_check.py` 五个入口打通，
+  `film.json → 剪映工程` 一次成功（EP02：6 轨 100 段、关键帧/动画/转场/滤镜/淡入全保留、
+  `new_version=110.0.0` 可被剪映 11.6 正常打开）；换设备只需 `python tools\jy_env.py --write-env`。
 - 仓库：<https://github.com/aiamkey/bs-video-pipeline>（MIT）。
 
 **下一步（按优先级）**
