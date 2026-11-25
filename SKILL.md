@@ -261,7 +261,7 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"          # 必设，否则 requests 走
 | `icon` | 线性图标 | `name` `size` `color` |
 | `arrow` | 长箭头 | `size` `color` |
 | `dot` | 红点 + 文字 | `text` `size` |
-| `box` | 虚线框高亮 | `w` `size` |
+| `box` | 结论块：有 `text` = 深底（`rgba(18,16,13,.86)`）白字 + 左侧红条；无 `text` = 虚线框高亮 | `text` `size` `w` `color` |
 
 `icon.name`：`check` `cross` `house` `family` `clock` `phone` `money` `up` `down` `arrow`
 
@@ -496,7 +496,9 @@ $base="扁平矢量卡通插画，同一个人物：$id，中景，简洁粗黑�
 | slides 图片复用 / 底板复用 | — | 出现 2 次以上 |
 | 音效条数 | — | 0（还没做音效层） |
 
-EP02 实测（2026-11-25）：**FAIL 4 · WARN 8** —— 3 屏元素挤在一列、label 40%、卡片单镜中位 2.14s、5 句短于 1.5s、`u12b.jpg` 用两次、音效 0。
+EP02 实测（2026-11-25，元素重排后）：**FAIL 0 · WARN 4** —— 3 屏挤成一列已修（元素改为按底板人物位置分两侧，p2/p3/p5/p9/p10 重排）、label 占比 40%→29%（三处 `label` 换 `box` 结论块）、icon/arrow 28%→25%、`u12b.jpg` 重复已换 `u8b.jpg`。剩余 WARN 全是风格项：panel 最短 2.6s（p11 收尾只 2 句）、卡片单镜中位 2.14s、5 句 <1.5s、音效 0——这三项要动稿子重配音，不是改 json 能解决的。
+
+改元素只改 `script-ep02.json` 里的 `el.x/el.y/el.kind`，然后 `build_film.py` → `audit.py`，两步十秒，不用渲染。**每张底板人物位置不同，锚点要按图定**：人物偏左就全走右侧 + 左下角，人物居中就左右分两侧（实测 `metro` 人物正中、`office` 人物贴左缘、`sofa` 人物占左三分之二）。
 
 ### 7.5 素材专项验收（人工，3 分钟）
 
