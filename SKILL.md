@@ -1,4 +1,4 @@
----
+﻿---
 name: bs-video-pipeline
 description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、排查字幕不同步/闪白/静止过长/元素排布像PPT/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
 ---
@@ -17,8 +17,9 @@ description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋�
 ```powershell
 $py = "E:\miniconda\envs\JupyterProject\python.exe"
 $env:NO_PROXY = "dashscope.aliyuncs.com"
-& $py lbr-promo\pipeline\run.py all ep02 scripts\script-ep02.json   # 一条片
-& $py lbr-promo\pipeline\check.py ep02                              # 11 项体检
+& $py lbr-promo\pipeline\audit.py                                   # ① 排布体检（FAIL 就别渲染）
+& $py lbr-promo\pipeline\run.py all ep02 scripts\script-ep02.json   # ② 一条片
+& $py lbr-promo\pipeline\check.py ep02                              # ③ 成片 11 项体检
 ```
 
 三条不可违的铁律：
@@ -33,11 +34,14 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"
 |---|---|---|
 | 文案（`script-*.json` 的 `text`） | `align` → `build` → `render` → `mix` | 句子变了，时间轴全变 |
 | 卡片内容（`card` 字段） | `build` → `render` → `mix` | 只影响画面 |
-| panel 元素（`el` / `x` / `y`） | `build` → `render` → `mix` | 元素位置在读 film.json 时定 |
+| panel 元素（`el` / `x` / `y`） | `audit` → `build` → `render` → `mix` | 元素位置在读 film.json 时定 |
 | `config.voice.rate` / `voice` | `voice` → `align` → `build` → `render` → `mix` | 配音从头来 |
 | 字幕字号/位置（`config.video.subtitle`） | `render` → `mix` | 纯渲染层 |
-| 响度（`config.voice.lufs` / `true_peak`） | `mix` | 只混音 |
+| 响度（`config.video.lufs` / `true_peak`） | `mix` | 只混音 |
 | 卡型组件（`Cards.tsx` / `Panel.tsx`） | `render` → `mix` | TSX 变了要重编译 |
+
+> **渲染前跑 `audit.py`**：它只读 `film.json`，10 秒出结果。有 FAIL 就不许渲染——EP02 第一版就是跳过这步，
+> 结果 25 个元素 92% 挤在 x=74 一列，白渲染两遍。
 
 ---
 
@@ -92,7 +96,8 @@ check    文件大小 静止阈值 采样帧率
 |---|---|
 | `pipeline/config.json` | 全部参数（改这里） |
 | `pipeline/run.py` | 六个阶段 + plan + all |
-| `pipeline/check.py` | 11 项体检 |
+| `pipeline/audit.py` | **film.json 排布体检**（元素跨区 / label / 单镜中位 / 素材复用，FAIL 拦渲染） |
+| `pipeline/check.py` | 11 项成片体检 |
 | `pipeline/README.md` | 怎么用、改一个小点改哪里 |
 | `pipeline/SPEC.md` | 方法论 + 文稿/动画/素材规格 |
 | `pipeline/ANIMATION.md` | **动画怎么长**（六动作 + 转场 + 五步循环 + 卡通幻灯片） |
@@ -278,6 +283,9 @@ y 建议分档 **24 / 48 / 70**，三个元素错开；超过 74 会撞字幕。
 > 记住凯哥的元素是**在讲故事**：`她：哦`（气泡）→ `3`（数字）→ 房子+一家三口（图标）。
 > 不是"关键词列表"。写元素前先问：**这个元素是在演，还是在复读？**
 
+**这三条不靠自觉，靠 `pipeline/audit.py` 卡**（见 §7.0）。EP02 第一版就是规则写在这里、
+一句没执行，实测 3 屏挤成一列、label 占 40%。跑一次 audit 会直接列出来。
+
 ### 哪些句子该进 panel
 
 不是所有句子都能并屏。判据按顺序：
@@ -458,9 +466,37 @@ $base="扁平矢量卡通插画，同一个人物：$id，中景，简洁粗黑�
 
 硬指标（FAIL 才退 1）：文件大小、时长、响度、真峰值。风格指标记 WARN。
 **短样片（< 30s）自动把大小与字秒降为 WARN**，方便 cardtest。
+**注意**：响度只有跑 `*-final.mp4`（混过音）才有意义；拿 raw 喂 check 会显示 −23 LUFS，那不是缺陷，是你跑错文件。
 
 已知基线：EP01 v6 103.2s / 525 字 / 5.09 字秒；EP02 v3 117.5s / 630 字 / 5.36 字秒 / 静止 10% / 卡通 39%。
 单镜中位 1.9–2.5 属正常（一句一镜必然偏短），别为这条改稿。
+
+> **静止不是缺点**。凯哥原片 0–30s 有一段连续 5 秒画面完全不动（11.5–16.5s），全段静止占 43%。
+> 我们一度把 49% 当 bug 去压，压到 23% —— 这不是改进，只是换了个风格。别为这条指标改稿。
+
+### 7.0 排布体检（`audit.py`，渲染之前跑）
+
+`check.py` 看成片，量不到"构图像不像 PPT"；`audit.py` 只读 `film.json`，10 项构图与节奏判定，**有 FAIL 就别渲染**。
+
+```powershell
+& $py lbr-promo\pipeline\audit.py          # 默认读 src/data/film.json
+& $py lbr-promo\pipeline\audit.py --json   # 机器可读
+```
+
+| 项 | FAIL 线 | WARN 线 |
+|---|---|---|
+| 同屏 ≥3 元素时 x 跨度 | < 25 个百分点（挤成一列） | — |
+| 每屏 label 数 | > 1 | — |
+| 元素 y | > 74（撞字幕） | — |
+| label 占全部元素 | — | > 30% |
+| icon/arrow 占比（剪映里会变 emoji） | — | > 25% |
+| panel 一屏时长 | — | 最短 < 4.0s |
+| 卡片句单镜中位 | — | < 2.3s（凯哥 2.75） |
+| 卡片句 < 1.5s 的短镜 | — | 有 |
+| slides 图片复用 / 底板复用 | — | 出现 2 次以上 |
+| 音效条数 | — | 0（还没做音效层） |
+
+EP02 实测（2026-11-25）：**FAIL 4 · WARN 8** —— 3 屏元素挤在一列、label 40%、卡片单镜中位 2.14s、5 句短于 1.5s、`u12b.jpg` 用两次、音效 0。
 
 ### 7.5 素材专项验收（人工，3 分钟）
 
@@ -583,15 +619,40 @@ ep02 实测（修完）：视频轨 41 段（底板 11 + 卡片 30）/ 元素 24
   `stock.py`（bing/commons/openverse/pexels + preview）、`assets.py`（list/check/add）、`build_lib.py`（缺口→批量生成）。
 - 成片：EP01 v6 103.1s；EP02 v3 117.5s（卡通 39%）；EP02 panel 版 117.5s（panel 覆盖 43%，自评 60 分）。
   演示：`cardtest-final.mp4`、`slides-final.mp4`、`panel-final.mp4`。
-- 剪映：`jy_env.py / jy.cmd / jy_draft.py / jy_from_film.py / jy_check.py` 五个入口打通，
-  `film.json → 剪映工程` 一次成功（EP02：6 轨 100 段、关键帧/动画/转场/滤镜/淡入全保留、
-  `new_version=110.0.0` 可被剪映 11.6 正常打开）；换设备只需 `python tools\jy_env.py --write-env`。
+- 剪映：`jy_env.py / jy.cmd / jy_draft.py / jy_from_film.py / jy_check.py / jy_cards.py` 六个入口打通，
+  `film.json → 剪映工程` 一次成功（EP02：7 轨 121 段、关键帧/动画/转场/滤镜/淡入全保留、
+  `new_version=110.0.0` 可被剪映 11.6 正常打开、黑场 0.00s）；换设备只需 `python tools\jy_env.py --write-env`。
+- 质检：`check.py`（成片 11 项）+ `audit.py`（film.json 10 项构图/节奏，FAIL 即拦）。
 - 仓库：<https://github.com/aiamkey/bs-video-pipeline>（MIT）。
 
 **下一步（按优先级）**
 
 1. **元素排布**：按 §5.6 三规则重排 EP02 的 25 个元素（禁一列 / label≤1 / 可压人物）——不花 API 时间，收益最大。
-2. **扩覆盖**：把剩余 30 句里相邻的 `slides` 并屏，panel 覆盖 43% → 65%。
-3. **A/B/A 插入**：主屏中途插 0.5–1.0s 反应图（凯哥 283s 的做法），目前完全没有。
-4. `teacher` 剪影换 shotcraft `brand-ink-open`；补 `wrong`/`anatomy` 实拍素材。
-5. 凯哥剩余 49 条作品待采集（13/62）。
+   改完必须 `audit.py` 归零 FAIL 才算完。
+2. **卡片句合并**：相邻同类型卡片合成一镜，把单镜中位 2.14s 拉到 2.5+，消掉 5 句 <1.5s 的短镜。
+3. **音效层**：按 §13（`JIANYING.md`）给元素弹入与换屏挂点。
+4. **图标 PNG 化**：10 个 icon/arrow 现在是 emoji，剪映渲成系统彩色表情。
+5. **A/B/A 插入**：主屏中途插 0.5–1.0s 反应图（凯哥 283s 的做法），目前完全没有。
+6. `teacher` 剪影换 shotcraft `brand-ink-open`；补 `wrong`/`anatomy` 实拍素材。
+7. 凯哥剩余 49 条作品待采集（13/62）。
+
+---
+
+## 10. 能力边界：哪些能修，哪些修不了
+
+这一节是为了**别再归因错**。出问题时先在这里对号，别急着换模型或换工具。
+
+| 现象 | 归类 | 说明 |
+|---|---|---|
+| 元素挤一列、label 过多 | **执行漏洞** | 规则写了没执行，`audit.py` 能抓住 |
+| 单镜偏碎、卡片句 <1.5s | **排片问题** | 合并同类型卡片即可 |
+| 音效 0 条、图标是 emoji | **没做** | 有规则、有工具，差执行 |
+| 话和图对不上 | **顺序问题** | 先攒图后套句子必然错；改成先列场景再出图（§6.2） |
+| 卡通只有单姿势、没有对手戏 | **生图能力上限** | `wanx2.1-t2i-turbo + seed` 只能"同一个人换场景"，做不到连续动作/双人对戏。换文案模型不解决，要换 image-edit 通道 |
+| 文案不够敢说 | **模型能力** | 换更强的文本模型确实会好，这是真实差距，骨架已量化但"那口气"还在 |
+| 没有真人出镜 | **客观不可行** | 无演员、无授权素材，只能全卡通，天然低一档 |
+| 剪映里元素不能单独选中 | **工具边界** | 剪映数据结构所限；改字要回 Remotion 重生成（§15 `JIANYING.md`） |
+| 剪映导出必须手点 | **工具边界** | 第三方库拿不到官方全保真导出 |
+
+一句话：**结构和工程能到 80 分，剩下 20 分里一半是素材生成能力的天花板、一半是我没执行到位的规则。**
+

@@ -10,17 +10,23 @@ video/
 │  ├─ pipeline/
 │  │   ├─ config.json    ← 唯一真源：所有数字阈值、音色、颜色、字号
 │  │   ├─ run.py         ← 跑流程（voice / align / build / render / mix / check / all）
-│  │   ├─ check.py       ← 自动质检
+│  │   ├─ audit.py       ← 排布体检（只读 film.json，FAIL 拦渲染）
+│  │   ├─ check.py       ← 自动质检（看成片）
 │  │   ├─ SPEC.md        ← 规格全文（讲规则，数字指向 config 字段）
+│  │   ├─ ANIMATION.md   ← 动画/转场/节奏规格
+│  │   ├─ CARTOON.md     ← 卡通素材与底板规格
+│  │   ├─ JIANYING.md    ← 剪映衔接（生成工程 / 可迁移 / 已知坑）
 │  │   └─ README.md      ← 本文
 │  ├─ scripts/
 │  │   ├─ script-bs.json   ← 文稿（一句一卡）
 │  │   └─ build_film.py      ← 文稿+时间轴 → film.json
 │  ├─ src/bs/Cards.tsx       ← 卡型组件（改样式来这里）
+│  ├─ src/bs/Panel.tsx       ← panel 元素层（一屏多句 + 逐句弹入）
 │  ├─ src/bs/DataFilm.tsx    ← 渲染入口（读 film.json）
 │  ├─ public/audio/          ← 配音 wav
 │  └─ out/                   ← 成片
 └─ tools/                    ← cosy_chapter.py（配音）、align_v2.py（对齐）
+   └─ jy_*.py                ← 剪映五件套（env / draft / from_film / check / cards）
 ```
 
 ## 一条命令
@@ -31,6 +37,20 @@ E:\miniconda\envs\JupyterProject\python.exe lbr-promo\pipeline\run.py all voice-
 ```
 
 七个阶段依次跑：配音 → 对齐 → 生成 film.json → 渲染 → 混音 → 质检。
+**渲染之前先跑 `audit.py`**（见下一节），有 FAIL 就别浪费一次渲染。
+
+## 排布体检（`audit.py`，10 秒，不渲染）
+
+```powershell
+... python lbr-promo\pipeline\audit.py          # 读 src/data/film.json
+... python lbr-promo\pipeline\audit.py --json   # 机器可读
+```
+
+只读 `film.json`，判 10 项：元素是否挤成一列、每屏 label 数、元素 y 是否撞字幕、
+label 占比、icon/arrow 占比（剪映会渲成 emoji）、panel 单镜时长、卡片单镜中位、
+<1.5s 短镜、slides/底板是否复用、音效条数。有 FAIL 退出码 1。
+
+EP02 实测 **FAIL 4 · WARN 8**，最典型一条：25 个元素里 23 个 x=74（全挤右边缘一列）。
 
 ## 分阶段跑（改了什么就跑哪几步）
 
@@ -38,10 +58,11 @@ E:\miniconda\envs\JupyterProject\python.exe lbr-promo\pipeline\run.py all voice-
 |---|---|
 | 只改文案措辞（句数不变） | `voice` → `align` → `build` → `render` → `mix` |
 | 只改卡片类型/配色（`script-bs.json` 的 `card`） | `build` → `render` → `mix` |
+| 只改 panel 元素位置（`el` / `x` / `y`） | `audit` → `build` → `render` → `mix` |
 | 只改 `config.json` 的卡片字号/颜色 | `render` → `mix` |
 | 改语速 `voice.rate` | `voice` → `align` → `build` → `render` → `mix` |
 | 只改混音响度 | `mix` |
-| 只想看数据 | `check` |
+| 只想看数据 | `check`（成片）/ `audit`（排布） |
 | 只想先知道会做多长 | `plan`（不花钱、不配音） |
 
 ```powershell
@@ -55,23 +76,25 @@ E:\miniconda\envs\JupyterProject\python.exe lbr-promo\pipeline\run.py all voice-
 `config.json` → `video.duration`
 
 ```json
-{ "mode": "auto", "target_sec": 100, "tolerance_pct": 8, "auto_bounds": [30, 600] }
+{ "mode": "auto", "target_sec": 150, "tolerance_pct": 20,
+  "auto_bounds": [30, 1200], "preferred_sec": [120, 180] }
 ```
 
 | mode | 含义 | 质检 |
 |---|---|---|
-| `auto`（默认） | **稿子写多长就多长**，不设目标 | 只卡 30–600s 合理区间，字数不卡 |
+| `auto`（默认） | **稿子写多长就多长**，不设目标 | 只卡 `auto_bounds` 合理区间，字数不卡；`preferred_sec` 只做软提示 |
 | `target` | 卡死 `target_sec ± tolerance_pct` | 时长是硬指标，字数按目标反推 ±10% |
 
-想做 **90 秒**：改 `mode: "target"`、`target_sec: 90`，然后跑 `plan`：
+想做 **150 秒**（当前默认目标）：把 `mode` 改 `"target"`、`target_sec: 150`，然后跑 `plan`：
 
 ```
-目标 90s（±8% → 83–97s）
-  需要字数 ≈ 472    当前 525    差额 +53 字
-  两条路：① 改字数到 472  ② 语速 rate 1.18 → 1.38
+目标 150s（±20% → 120–180s）
+  需要字数 ≈ 787    当前 630    差额 +157 字
+  两条路：① 改字数到 787  ② 语速 rate 1.18 → 1.35
 ```
 
-**先 `plan` 再决定删字还是加速**——加语速会牺牲"像人说话"的感觉，优先删字。
+**先 `plan` 再决定加字还是加速**——加语速会牺牲"像人说话"的感觉，优先改字数。
+`mode: "auto"` 时不必纠结：稿子多长就多长，`preferred_sec` 只做软提示。
 
 ## 文稿格式
 
