@@ -107,6 +107,25 @@ def main(argv):
         v = mats.get(key)
         if isinstance(v, list) and v:
             print(f"   -> {key}: {len(v)}")
+
+    # 素材本地化：草稿能否整目录搬走
+    local = ext = 0
+    for key in ("videos", "audios", "images"):
+        for m in mats.get(key) or []:
+            p = str(m.get("path") or "")
+            if not p:
+                continue
+            if p.startswith("##_draftpath_placeholder_"):
+                local += 1
+            else:
+                ext += 1
+    mode = (doc.get("config") or {}).get("material_save_mode")
+    if local or ext:
+        flag = "✓" if ext == 0 else "⚠"
+        print(f"\n素材本地化：{flag} 草稿内 {local} 个 / 外部绝对路径 {ext} 个"
+              f"（material_save_mode={mode}）")
+        if ext:
+            print("   外部路径的草稿换机器会丢素材；用 tools\\jy_localize.py 或 spec.localize=true 修")
     return 0
 
 

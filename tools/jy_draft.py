@@ -122,6 +122,24 @@ def _enum(enum_cls, name, what: str):
     return member
 
 
+_TEXT_EFFECTS: list | None = None
+
+
+def text_effect_id(name_or_id: str) -> str:
+    """花字：接受 resource_id（纯数字）或中文名，查 pipeline/jy_text_effects.json。"""
+    global _TEXT_EFFECTS
+    if str(name_or_id).isdigit():
+        return str(name_or_id)
+    if _TEXT_EFFECTS is None:
+        path = pathlib.Path(__file__).resolve().parent.parent / "lbr-promo" / "pipeline" / "jy_text_effects.json"
+        _TEXT_EFFECTS = json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else []
+    for row in _TEXT_EFFECTS:
+        if row.get("title") == name_or_id:
+            return str(row["id"])
+    pool = [r["title"] for r in _TEXT_EFFECTS][:12]
+    raise SystemExit(f"未知花字 {name_or_id!r}；共 {len(_TEXT_EFFECTS)} 条，示例：{pool}")
+
+
 # ------------------------------------------------------------------ author
 
 def build(spec: dict) -> pathlib.Path:
@@ -163,6 +181,26 @@ def build(spec: dict) -> pathlib.Path:
         print(f"  {t:6s} {st:7.2f}s +{du:5.2f}s  kf={nkf}  {label}")
 
     out = pathlib.Path(root) / spec["name"]
+
+    # 素材本地化：复制进草稿 assets/ 并改写成剪映占位符相对路径（草稿可整目录搬走）
+    if spec.get("localize", True) and not spec.get("dry_run"):
+        import jy_localize
+
+        li = jy_localize.localize(out)
+        print(f"素材本地化：{li['copied']} 个复制进 assets/ · {li['total']} 个素材已改相对路径"
+              + (f" · {li['missing']} 个不在本地" if li["missing"] else ""))
+
+    # 美颜/美型/美妆：库不支持的素材，直接写进明文 draft_content.json，再交给 finalize 加密
+    if spec.get("beauty") and not spec.get("dry_run"):
+        import jy_beauty
+
+        cat = jy_beauty.load_catalog()
+        ops, target = jy_beauty.ops_from_spec(cat, spec["beauty"])
+        if ops:
+            info = jy_beauty.apply_beauty(out, ops, target=target)
+            print(f"美化写入：{info['applied']} 条素材 → {info['segments']} 个视频片段"
+                  f"（占位 {info['placeholder'][:8]}）")
+
     if spec.get("dry_run"):
         return out
     return finalize(out)
@@ -267,6 +305,9 @@ def _decorate(seg, it):
         b = it["background_fill"]
         seg.add_background_filling(b.get("type", "blur"), blur=float(b.get("blur", 0.0625)),
                                    color=b.get("color", "#00000000"))
+    if it.get("text_effect") and hasattr(seg, "add_effect"):
+        # 花字：effect_id 与 resource_id 同值，名字查 jy_text_effects.json
+        seg.add_effect(text_effect_id(it["text_effect"]))
 
 
 def _add_animation(seg, it):

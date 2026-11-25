@@ -120,7 +120,11 @@ check    文件大小 静止阈值 采样帧率
 | `tools/jy.cmd` | 封装 `jyai.cli`（list / inspect / build / patch / repair / render） |
 | `tools/jy_draft.py` | spec(JSON) → 剪映工程（多轨 + 关键帧 + 动画 + 转场 + 滤镜） |
 | `tools/jy_from_film.py` | **film.json → 剪映工程**（底板/元素/字幕/配音自动分轨） |
-| `tools/jy_check.py` | 回读草稿校验（版本 / 轨 / 关键帧 / 素材数） |
+| `tools/jy_check.py` | 回读草稿校验（版本 / 轨 / 关键帧 / 素材数 / **黑场 / 素材本地化**） |
+| `tools/jy_localize.py` | **素材本地化**：素材复制进草稿 `assets/` + 路径改剪映占位符相对形式 → 草稿可整目录搬走 |
+| `tools/jy_beauty.py` | 人像美化（skin/shape/body/肤色/妆容）：写 `materials.effects` type=figure |
+| `pipeline/jy_beauty_catalog.json` | 美颜滑杆 ↔ resource_id 对照（skin 8 / shape 13 / body 12 / makeup 54 / skin_tone 2） |
+| `pipeline/jy_text_effects.json` | 花字目录 1673 条（免费 94 条），`text_effect` 字段按中文名查 |
 
 ---
 
@@ -605,6 +609,27 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
 
 ep02 实测（修完）：视频轨 41 段（底板 11 + 卡片 30）/ 元素 24 个 / 字幕 55 段 / 配音 1 段，
 `new_version=110.0.0`、**黑场 0.00s**、`issues=[]`。验收看 `jy_check` 的「画面覆盖」段落。
+
+**草稿可迁移（默认已开）**：`jy_draft.build()` 在 `script.save()` 之后自动跑 `jy_localize.localize()`
+——素材复制进 `<草稿>/assets/`，路径改成剪映的占位符相对形式
+`##_draftpath_placeholder_0E685133-18CE-45ED-8CB8-2904A212EC80_##/assets/xxx`，`config.material_save_mode=1`。
+**不这么做，草稿写的是绝对路径，换机器/发给别人全片变黑。**
+ep02 实测：42 个素材进 assets（13.26 MB），`jy_check` 显示 `素材本地化：✓ 草稿内 42 个 / 外部绝对路径 0 个`。
+配套坑：`jyai\repair.py` 的 `validate()` 原来用 `os.path.isfile(path)` 判素材，遇占位符必报「素材丢失」——
+已加 `resolve_material_path()` 解析占位符（`JIANYING.md` §17 有全文）。
+
+**人像美化 / 花字**（capcut-mate 的 metadata 搬运）：
+
+```powershell
+# 美颜写在 spec 顶层 beauty 字段
+# "beauty": {"skin": {"smooth": 40, "even": 30}, "shape": {"slim": 25}, "tint": "暖白:60:20", "look": "中国妆:80"}
+& $py tools\jy_beauty.py --list                      # 有哪些滑杆
+# 花字写在 item 里："text_effect": "白字红边立体字"
+```
+
+机制：每条非 0 滑杆 → `materials.effects` 一条 `type=figure` + 挂到片段 `extra_material_refs`，
+并**必须同时补一条 `makeup-root`**；滑杆 0 = 不写（等价剪映里"关闭"）。花字走 `TextSegment.add_effect(id)`，
+同样必须在 `add_segment()` 之前调。
 
 ---
 

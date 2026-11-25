@@ -388,3 +388,81 @@ EP02 重排后的映射（每张底板全片只用一次，语义一对一）：
 ```
 
 新写稿时，**先列 11–14 个"这句话在什么场景"**，再按场景去生图，别反过来。
+---
+
+## 17 草稿可迁移（素材本地化）
+
+### 17.1 为什么必须做
+
+我们早期写的 `draft_content.json` 里素材是**绝对路径**：
+
+```json
+"path": "E:/剪映5.9版本免激活(1)/草稿/JianyingPro Drafts/EP02_剪映工程/assets/v1.jpg"
+```
+
+后果：草稿只能在这台机器的这个位置打开。换机器、改盘符、发给别人 → 全片变黑。
+
+剪映自己保存草稿时用的不是绝对路径，而是**占位符 + 草稿内相对路径**：
+
+```
+##_draftpath_placeholder_0E685133-18CE-45ED-8CB8-2904A212EC80_##/assets/video-21460118.jpg
+```
+
+`0E685133-18CE-45ED-8CB8-2904A212EC80` 是编译进剪映的固定常量（来源：capcut-mate-skill `scripts/lib/draft-paths.mjs` 的 `DEFAULT_PLACEHOLDER_ID`），**已用剪映 11.6.0.14552 实测：这样写的草稿能正常显示**（实验草稿 `AItest_portable`，两段并排对照，两段都有画面）。
+
+### 17.2 落地位置
+
+`tools\jy_localize.py` → 在 `tools\jy_draft.py` 的 `build()` 里，`script.save()` 之后、`finalize()` 之前自动执行（spec 里 `"localize": false` 可关）。
+
+它做四件事：
+
+1. 遍历 `materials.videos / audios / images`，把绝对路径素材 `shutil.copy2` 进 `<草稿>/assets/`，命名 `{video|audio|image}-{md5[:8]}{后缀}`（同一源文件只复制一次）
+2. 把 `materials.*[].path` 改成占位符相对路径
+3. `config.material_save_mode = 1`
+4. 同步 `Timelines/<id>/draft_content.json`，并把 `draft_meta_info.json` 的 `draft_materials[].value[].file_Path` 改成 `./assets/xxx`
+
+EP02 实测：`素材本地化：42 个复制进 assets/ · 42 个素材已改相对路径`，assets 13.26 MB，草稿总 14.92 MB，`issues=[]`，黑场 0。
+
+### 17.3 校验器要一起改（已改）
+
+`jyai\repair.py` 的 `validate()` 原来用 `os.path.isfile(path)` 判断素材是否存在 —— 遇到占位符路径**必然误报「素材丢失」**。
+
+已加：
+
+```python
+_PLACEHOLDER_RE = re.compile(r'^##_draftpath_placeholder_[^#]+_##/(.+)$', re.S)
+
+def resolve_material_path(path, folder):
+    """把草稿内相对路径（##_draftpath_placeholder_<ID>_##/xxx）解析成绝对路径。"""
+    if not path:
+        return path
+    match = _PLACEHOLDER_RE.match(str(path).replace('\\', '/'))
+    return str(Path(folder) / match.group(1)) if match else path
+```
+
+`validate()` 里改成 `not os.path.isfile(resolve_material_path(m['path'], folder))`。
+
+**改这个之前，所有本地化草稿都会报 `素材丢失`、`static_valid: false`。**
+
+### 17.4 怎么验
+
+```powershell
+& $py tools\jy_check.py "<草稿目录>"
+# 期望看到：
+#   素材本地化：✓ 草稿内 42 个 / 外部绝对路径 0 个（material_save_mode=1）
+```
+
+再做一次真实验：把整个草稿目录**复制到别的路径**（或别的机器），用剪映打开，画面应当完好。
+
+### 17.5 目录形态
+
+```
+EP02_剪映工程/
+  assets/                  42 个素材，13.26 MB
+  draft_content.json       加密；素材路径为占位符相对形式
+  draft_meta_info.json     draft_materials[].value[].file_Path = ./assets/xxx
+  Timelines/<id>/draft_content.json
+  Resources/ audioAlg videoAlg
+```
+
+整个目录就是交付物 —— 发给别人、丢进网盘、换机都能直接打开。
