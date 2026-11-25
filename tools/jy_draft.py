@@ -93,6 +93,8 @@ def load_env() -> dict:
     if info.get("app_version"):
         os.environ.setdefault("JY_APP_VERSION", info["app_version"])
     os.environ.setdefault("JY_DRAFT_NEW_VERSION", info.get("new_version") or "110.0.0")
+    if info.get("placeholder"):
+        os.environ.setdefault("JY_PLACEHOLDER", info["placeholder"])
 
     scripts = pathlib.Path(info["skill_scripts"])
     if str(scripts) not in sys.path:
@@ -142,7 +144,65 @@ def text_effect_id(name_or_id: str) -> str:
 
 # ------------------------------------------------------------------ author
 
+TRACK_TYPES = {"video", "text", "audio", "sticker", "effect", "filter"}
+KEYFRAME_PROPS = {"scale", "scale_x", "scale_y", "position_x", "position_y",
+                  "rotation", "alpha", "volume"}
+
+
+def validate_spec(spec: dict) -> list[str]:
+    """轻量契约校验（不引 jsonschema，避免多一个依赖）。返回错误列表，空 = 通过。"""
+    errs = []
+    if not isinstance(spec, dict):
+        return ["spec 必须是 JSON 对象"]
+    for key in ("name", "drafts_root"):
+        if not spec.get(key):
+            errs.append(f"缺必填字段 {key}")
+    if errs:
+        return errs
+
+    tracks = spec.get("tracks")
+    if not isinstance(tracks, list) or not tracks:
+        return ["tracks 必须是非空数组"]
+
+    for ti, tr in enumerate(tracks):
+        where = f"tracks[{ti}]"
+        if not isinstance(tr, dict):
+            errs.append(f"{where} 必须是对象")
+            continue
+        ttype = tr.get("type")
+        if ttype not in TRACK_TYPES:
+            errs.append(f"{where}.type={ttype!r} 不在 {sorted(TRACK_TYPES)}")
+        items = tr.get("items")
+        if not isinstance(items, list) or not items:
+            errs.append(f"{where}.items 必须是非空数组")
+            continue
+        for ii, it in enumerate(items):
+            at = f"{where}.items[{ii}]"
+            dur = it.get("duration")
+            if not isinstance(dur, (int, float)) or dur <= 0:
+                errs.append(f"{at}.duration 必须是正数（秒）")
+            if float(it.get("start", 0)) < 0:
+                errs.append(f"{at}.start 不能为负")
+            if ttype == "text" and not it.get("text"):
+                errs.append(f"{at} 是文字段但没有 text")
+            if ttype in ("video", "audio", "sticker", "effect", "filter") and not it.get("path"):
+                errs.append(f"{at} 缺 path")
+            for ki, kf in enumerate(it.get("keyframes") or []):
+                if kf.get("prop") not in KEYFRAME_PROPS:
+                    errs.append(f"{at}.keyframes[{ki}].prop={kf.get('prop')!r} 不在 {sorted(KEYFRAME_PROPS)}")
+            if it.get("text_effect") and ttype != "text":
+                errs.append(f"{at}.text_effect 只能用在文字段")
+
+    if spec.get("beauty") and not isinstance(spec["beauty"], dict):
+        errs.append("beauty 必须是对象")
+    return errs
+
+
 def build(spec: dict) -> pathlib.Path:
+    errs = validate_spec(spec)
+    if errs:
+        raise SystemExit("spec 校验失败：\n  - " + "\n  - ".join(errs))
+
     import pyJianYingDraft as d
     from pyJianYingDraft import KeyframeProperty as KP
 
@@ -420,6 +480,19 @@ def main(argv):
 
     info = load_env()
     spec.setdefault("drafts_root", info["drafts_root"])
+
+    if "--validate" in argv:
+        errs = validate_spec(spec)
+        if errs:
+            print("spec 校验失败：")
+            for e in errs:
+                print("  - " + e)
+            return 1
+        n_tracks = len(spec.get("tracks") or [])
+        n_items = sum(len(t.get("items") or []) for t in spec.get("tracks") or [])
+        print(f"spec 校验通过：{n_tracks} 条轨 / {n_items} 个片段")
+        return 0
+
     print(f"环境：剪映 {info['app_version']} / 草稿根 {spec['drafts_root']}")
 
     t0 = time.time()

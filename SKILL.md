@@ -1,4 +1,4 @@
----
+﻿---
 name: bs-video-pipeline
 description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完，渲染前先用 audit.py 做排布体检。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、把 film.json 转成剪映工程、排查字幕不同步/闪白/静止过长/元素排布像PPT/黑场/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
 ---
@@ -17,10 +17,20 @@ description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋�
 ```powershell
 $py = "E:\miniconda\envs\JupyterProject\python.exe"
 $env:NO_PROXY = "dashscope.aliyuncs.com"
+& $py lbr-promo\pipeline\selftest.py                                # ⓪ 30 秒冒烟：链路还是好的吗
 & $py lbr-promo\pipeline\audit.py                                   # ① 排布体检（FAIL 就别渲染）
 & $py lbr-promo\pipeline\run.py all ep02 scripts\script-ep02.json   # ② 一条片
 & $py lbr-promo\pipeline\check.py ep02                              # ③ 成片 11 项体检
 ```
+
+**四份查表文档（别在 677 行里翻）：**
+
+| 我想知道 | 看 |
+|---|---|
+| 该调哪个工具 / 每个工具怎么用 / **什么不该做** | `pipeline/TOOLS.md` |
+| 出问题了先查什么 | `pipeline/TROUBLES.md` |
+| 一条片多少钱、多少时间 | `pipeline/COST.md` |
+| 剪映版本支持什么、spec 字段 | `pipeline/JIANYING.md` · `pipeline/SPEC.md` · `pipeline/jy_versions.json` |
 
 三条不可违的铁律：
 
@@ -92,9 +102,16 @@ check    文件大小 静止阈值 采样帧率
 
 ## 1. 目录地图
 
+> 每个工具"什么时候用、怎么调、有什么坑"在 **`pipeline/TOOLS.md`**。这里只列"有什么"。
+
 | 文件 | 管什么 |
 |---|---|
 | `pipeline/config.json` | 全部参数（改这里） |
+| `pipeline/TOOLS.md` | **工具索引 + 负面清单 13 条** |
+| `pipeline/TROUBLES.md` | **故障对照 30 条** |
+| `pipeline/COST.md` | 成本与时间预算（一条片 ≈1.8 元 / 1.5–2 小时） |
+| `pipeline/selftest.py` | **30 秒冒烟自检**（不联网不渲染） |
+| `pipeline/jy_versions.json` | **剪映版本能力表**（new_version / placeholder / 已验证能力） |
 | `pipeline/run.py` | 六个阶段 + plan + all |
 | `pipeline/audit.py` | **film.json 排布体检**（元素跨区 / label / 单镜中位 / 素材复用，FAIL 拦渲染） |
 | `pipeline/check.py` | 11 项成片体检 |
@@ -107,7 +124,7 @@ check    文件大小 静止阈值 采样帧率
 | `scripts/script-*.json` | 文稿（每句带 card，或 panel + el） |
 | `src/bs/Cards.tsx` | 卡型组件（18 种卡片） |
 | `src/bs/Panel.tsx` | **panel 层**（底板 + 7 种元素逐句弹入） |
-| `src/bs/DataFilm.tsx` | 渲染入口（读 `film.json`，卡片层 + panel 层） |
+| `src/bs/DataFilm.tsx` | 渲染入口（读 `film.json`，卡片层 + panel 层；`DataFilmNoSub` 供抽卡片静帧） |
 | `src/data/film.json` | 生成物：lines + panels + 时间轴 |
 | `tools/img.py` | 生图（openai / dashscope / ark + `--seed`） |
 | `tools/stock.py` | 图库检索（bing / commons / openverse / pexels） |
@@ -115,14 +132,15 @@ check    文件大小 静止阈值 采样帧率
 | `tools/build_lib.py` | 按 library.json 补缺口（`--dry-run` / `--only`） |
 | `tools/cosy_chapter.py` | 按章配音 |
 | `tools/align_v2.py` | whisper 词级对齐 → timeline |
-| `pipeline/JIANYING.md` | **剪映衔接**（两条路线 + spec + 三件实现事实 + 9 条坑） |
+| `pipeline/JIANYING.md` | **剪映衔接**（两条路线 + spec + 三件实现事实 + 9 条坑 + §17 可迁移） |
 | `tools/jy_env.py` | 探测剪映安装/版本/草稿根/skill 路径 → 写 `tools/jy.env`（换设备第一步） |
 | `tools/jy.cmd` | 封装 `jyai.cli`（list / inspect / build / patch / repair / render） |
-| `tools/jy_draft.py` | spec(JSON) → 剪映工程（多轨 + 关键帧 + 动画 + 转场 + 滤镜） |
+| `tools/jy_draft.py` | spec(JSON) → 剪映工程（多轨 + 关键帧 + 动画 + 花字；`--validate` 契约校验） |
 | `tools/jy_from_film.py` | **film.json → 剪映工程**（底板/元素/字幕/配音自动分轨） |
 | `tools/jy_check.py` | 回读草稿校验（版本 / 轨 / 关键帧 / 素材数 / **黑场 / 素材本地化**） |
 | `tools/jy_localize.py` | **素材本地化**：素材复制进草稿 `assets/` + 路径改剪映占位符相对形式 → 草稿可整目录搬走 |
 | `tools/jy_beauty.py` | 人像美化（skin/shape/body/肤色/妆容）：写 `materials.effects` type=figure |
+| `tools/jy_cards.py` | 抽卡片静帧（垫满非 panel 段，否则一半黑场） |
 | `pipeline/jy_beauty_catalog.json` | 美颜滑杆 ↔ resource_id 对照（skin 8 / shape 13 / body 12 / makeup 54 / skin_tone 2） |
 | `pipeline/jy_text_effects.json` | 花字目录 1673 条（免费 94 条），`text_effect` 字段按中文名查 |
 
@@ -546,28 +564,20 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
 
 ---
 
-## 8. 踩过的坑（故障对照）
+## 8. 踩过的坑
 
-| 症状 | 根因 | 修法 |
+**完整故障对照在 `pipeline/TROUBLES.md`（五类 30 条）**，按"最先想到的"排序。这里只留最高频的 6 条：
+
+| 症状 | 先查 | 修法 |
 |---|---|---|
-| 切点闪白 | 卡片 opacity 从 0 起 | `card.opacity_start` 保持 0.15 |
-| 字幕与语音错位 | 改文案没重跑 align | 改稿必须 `align` 再 `build` |
-| 声音断触 | 逐句合成，静音堆积 | 按章合成（`cosy_chapter`）+ 轻削静音 |
-| "怪声"金属感 | atempo 加速 | 用原生 `speech_rate` |
-| 渲染报 `Permission denied .wav` | TEMP 在 %TEMP% | TEMP/TMP 指向工程内 |
-| `KeyError: DASHSCOPE_API_KEY` | 脚本直接读 env | `run.py` 已代为注入（env → config → tts-service 配置） |
-| `ProxyError` 调百炼 | 系统代理 | `$env:NO_PROXY="dashscope.aliyuncs.com"` |
-| 画面与语音对不上 | 多句绑一张卡 | 改"一句一镜"（`film.json` 驱动） |
-| 静止占比过高 | 卡片是死图 | 每张 1.000→1.035 微推 |
-| 素材配不上句子 | 先按"风格"找图，再套句子 | 反过来：先读句子，列 3 个必须出现的东西，再找图 |
-| 一张图贴了半集 | 没登记复用 | 建 `assets.json`，`used_in` ≥2 就排除 |
-| 卡通人物不像一个人 | 换 provider / 换 seed / 词太虚 | 固定 `wanx2.1-t2i-turbo` + `--seed 20261124` + 身份串 |
-| 检索出来的图全不对 | cn.bing 对分镜描述命中极低 | 只当捡便宜，命中率 <30% 直接转 AI 生成 |
-| 渲染报 404 `textures/lib/xxx.jpg` | 图在 `slides/` 没进 `lib/` | 建库时按 `library.json` 的 `file` 名复制一份到 `lib/` |
-| 改了新稿却渲染出旧片 | `run.py build xx` 漏第 3 参数，用了 config 里的 `project.script` | 永远写全：`build xx scripts/script-xx.json` |
-| 真峰值反而变正 | `alimiter` 默认 `level` 会自动拉高电平 | `alimiter=limit=0.79:level=disabled:attack=5:release=60` |
-| panel 打印 0 屏 | `panel` 写成字符串但第一句没给 `bg` | 首句必须 `{"panel":{"id":"p1","bg":"..."}}`，后续才能写 `"p1"` |
-| PowerShell 里 python 报 `NameError` | here-string 吃掉了代码里的引号 | 写临时 `.py` 再执行，别用 `@"..."@` 包 Python |
+| 打开剪映工程一半是黑 | `jy_check` 的「画面覆盖」 | 跑 `jy_cards.py --render` 垫卡片静帧 |
+| 元素跑到下半屏 | `pct_y` 符号 | 剪映 **y 轴向上为正**，`top:26%` → `+0.48` |
+| 一句话横贯全屏 | `max_line_width` | 按 `el.w/1280` 折算，默认 0.82 太宽 |
+| 改了新稿渲染出旧片 | `run.py build xx` 漏第 3 参数 | 永远写全：`build xx scripts/script-xx.json` |
+| 声音断触 | 逐句拼接过 | 按章合成 + 轻削静音 |
+| 草稿换机器全黑 | 素材是绝对路径 | `jy_localize`（默认开），看 `jy_check` 的「素材本地化」 |
+
+其余症状速查（详见 TROUBLES）：`切点闪白`=opacity 从 0 起；`怪声`=用了 atempo；`Permission denied .wav`=TEMP 没指到工程内；`ProxyError`=设 `NO_PROXY`；`404 textures/lib`=图还在 `slides/`；`panel 打印 0 屏`=首句没给 `bg`；`NameError`=here-string 吃了引号。
 
 ---
 

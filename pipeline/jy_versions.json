@@ -1,0 +1,39 @@
+{
+  "_comment": "剪映版本能力表。换机器/升级剪映后先跑 tools\\jy_env.py --check，它会核对实际版本是否在表里。",
+  "_how_to_add": "新版剪映实测通过后追加一条：version 用 Apps 下的目录名；new_version 用该版本自己保存的 draft_content.json 里的值；placeholder 用该版本存盘的素材路径前缀里的 UUID。",
+  "verified_at": "2026-11-25",
+  "versions": {
+    "11.6.0.14552": {
+      "new_version": "110.0.0",
+      "draft_version": "360000",
+      "placeholder": "0E685133-18CE-45ED-8CB8-2904A212EC80",
+      "status": "verified",
+      "tested": [
+        "加密草稿读写（DraftIO）",
+        "首页登记（root_meta_info.json）",
+        "视频/图片/文字/音频轨",
+        "关键帧 scale/position/alpha",
+        "文字入场动画（text_intro）",
+        "花字 add_effect",
+        "人像美化 materials.effects(type=figure)",
+        "素材本地化（占位符相对路径）",
+        "多轨不能重叠（SegmentOverlap）"
+      ],
+      "notes": "本机实测；videoeditor.dll sha1 F1A6C58F64E4 与 8.9 版相同，ABI 兼容。"
+    },
+    "8.9.0.13361": {
+      "new_version": "110.0.0",
+      "draft_version": "360000",
+      "placeholder": null,
+      "status": "installed-not-tested",
+      "tested": [],
+      "notes": "同机并存版本，DLL 相同但未跑过生成流程；需要时按 11.6 的结论先试。"
+    }
+  },
+  "unknown_version_policy": {
+    "new_version": "110.0.0",
+    "draft_version": "360000",
+    "placeholder": "0E685133-18CE-45ED-8CB8-2904A212EC80",
+    "advice": "先用未知版本的默认值生成一条 3 秒草稿，用剪映打开确认；能开就把该版本补进本表。若弹「软件版本需要升级」，说明 new_version 写高了，改成该版本自己存盘的值。"
+  }
+}

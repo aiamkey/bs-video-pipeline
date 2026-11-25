@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 
-PLACEHOLDER = "0E685133-18CE-45ED-8CB8-2904A212EC80"
+# 剪映编译期固定常量；从版本能力表取，取不到才用这个（见 pipeline/jy_versions.json）
+PLACEHOLDER_DEFAULT = "0E685133-18CE-45ED-8CB8-2904A212EC80"
+PLACEHOLDER = os.environ.get("JY_PLACEHOLDER") or PLACEHOLDER_DEFAULT
 PREFIX = f"##_draftpath_placeholder_{PLACEHOLDER}_##"
 MEDIA_DIR = "assets"
 LISTS = (("videos", "video"), ("audios", "audio"), ("images", "image"))

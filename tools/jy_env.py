@@ -222,12 +222,47 @@ def check_pyjianyingdraft() -> str | None:
         return "installed"
 
 
+# ---------------------------------------------------------------- 版本能力表
+
+VERSIONS_FILE = Path(__file__).resolve().parent.parent / "lbr-promo" / "pipeline" / "jy_versions.json"
+
+
+def _read_versions() -> dict:
+    if not VERSIONS_FILE.is_file():
+        return {}
+    try:
+        return json.loads(VERSIONS_FILE.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:  # noqa: BLE001
+        print(f"! 读不了版本能力表 {VERSIONS_FILE}：{exc}")
+        return {}
+
+
+def version_profile(version: str | None) -> dict:
+    """按实际剪映版本查能力表。查不到就回落 unknown_version_policy 并标记 unknown。"""
+    table = _read_versions()
+    versions = table.get("versions") or {}
+    fallback = table.get("unknown_version_policy") or {}
+    if version and version in versions:
+        return {"known": True, "version": version, **versions[version]}
+    return {
+        "known": False,
+        "version": version,
+        "new_version": fallback.get("new_version", "110.0.0"),
+        "draft_version": fallback.get("draft_version", "360000"),
+        "placeholder": fallback.get("placeholder"),
+        "status": "unknown",
+        "tested": [],
+        "notes": fallback.get("advice", ""),
+    }
+
+
 # ---------------------------------------------------------------- 汇总
 
 def discover() -> dict:
     version, ver_dir = find_app_version()
     drafts, drafts_src = find_drafts_root()
     skill, scripts = find_skill_scripts()
+    profile = version_profile(version)
     exe = None
     if ver_dir:
         for name in ("JianyingPro.exe", "剪映.exe"):
@@ -246,7 +281,9 @@ def discover() -> dict:
         "python": sys.executable,
         "ffmpeg": find_ffmpeg(),
         "pyjianyingdraft": check_pyjianyingdraft(),
-        "new_version": os.environ.get("JY_DRAFT_NEW_VERSION", "110.0.0"),
+        "version_profile": profile,
+        "new_version": os.environ.get("JY_DRAFT_NEW_VERSION") or profile["new_version"],
+        "placeholder": profile.get("placeholder"),
     }
 
 
@@ -255,6 +292,7 @@ def write_env(info: dict) -> Path:
         "# 由 tools/jy_env.py --write-env 自动生成，可手工改；改完重跑 jy.cmd 即生效",
         "# 换设备时删掉本文件，跑一次: python tools\\jy_env.py --write-env",
         f"NEW_VERSION={info['new_version']}",
+        f"PLACEHOLDER={info.get('placeholder') or ''}",
         f"DRAFTS_ROOT={info['drafts_root'] or ''}",
         f"APP_VERSION={info['app_version'] or ''}",
         f"APP_DIR={info['app_dir'] or ''}",
@@ -298,6 +336,15 @@ def main() -> int:
                 print("  修复：先在剪映里随便建一个草稿，或设 JY_DRAFTS_ROOT", file=sys.stderr)
             return 1
         print("OK：全部必需项就绪")
+        prof = info.get("version_profile") or {}
+        if prof.get("known"):
+            print(f"版本能力表：{prof['version']} 已登记（status={prof.get('status')}，"
+                  f"new_version={prof.get('new_version')}，已验证 {len(prof.get('tested') or [])} 项）")
+        else:
+            print(f"版本能力表：{prof.get('version') or '(未探测到)'} 未登记 → 用默认值 "
+                  f"new_version={prof.get('new_version')}；"
+                  "生成一条 3 秒草稿用剪映打开确认后，把该版本补进 lbr-promo/pipeline/jy_versions.json",
+                  file=sys.stderr)
     return 0
 
 
