@@ -258,6 +258,9 @@
 
 | 脚本 | 看什么 | 什么时候跑 |
 |---|---|---|
+| `env.py` | **所有路径的解析层**（环境变量 → `config.json` → 自动探测）：工程根 / 视频工程 / 脚本 / 工具 / 资源 / ffmpeg / python / 卡库 / tts 配置 | 任何脚本启动时隐式调用；`python pipeline/env.py` 手动看 9 项 |
+| `check_assets.py` | 稿子引用的图在不在（`card.img` / `card.frames[]` / `panel.bg` / `library.json` / `assets.json`） | 配音之前 |
+| `sfx.py` | 音效挂点（换屏 whoosh / 元素 pop / 数字 sparkle / 结论 impact）→ `src/data/sfx.json` | 渲染之前、转剪映之前 |
 | `audit.py` | `film.json` 的**构图与节奏**（元素跨区 / label 数 / y 越界 / 单镜中位 / 素材复用 / 音效条数），10 项，有 FAIL 退出 1 | **渲染之前**，10 秒 |
 | `check.py` | **成片** 11 项（大小 / 时长 / 字数 / 字秒 / 语速 / 单镜 / 静止 / 响度 / 真峰值） | 混音之后 |
 

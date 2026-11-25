@@ -104,10 +104,11 @@ key = os.environ.get("DASHSCOPE_API_KEY") or C.get("keys", {}).get("dashscope")
 add("DASHSCOPE_API_KEY", bool(key), "已配置" if key else "未配置",
     'set DASHSCOPE_API_KEY=sk-xxx  或 pipeline/config.local.json → keys.dashscope')
 
-# 8 可选：video-shotcraft
-sc = Path(r"C:\Users\张宇\OneDrive\Desktop\video\video-shotcraft")
-add("video-shotcraft(可选)", sc.exists(), str(sc) if sc.exists() else "未找到",
-    "clone https://github.com/vincentwei1021/video-shotcraft", hard=False)
+# 8 可选：video-shotcraft（卡库，找灵感用）
+import env  # noqa: E402  同目录，统一环境发现
+sc = env.shotcraft()
+add("video-shotcraft(可选)", bool(sc), str(sc) if sc else "未找到",
+    "clone https://github.com/vincentwei1021/video-shotcraft 或设 VIDEO_SHOTCRAFT", hard=False)
 
 # 输出
 w = max(len(r[1]) for r in rows) + 2

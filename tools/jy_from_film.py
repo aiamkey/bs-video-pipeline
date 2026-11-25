@@ -57,6 +57,41 @@ def load(film_path: pathlib.Path) -> dict:
     return json.loads(film_path.read_text(encoding="utf-8"))
 
 
+def _sfx_items(pub: pathlib.Path) -> list[dict]:
+    """读 src/data/sfx.json（pipeline/sfx.py 产物）→ 剪映音频片段。
+
+    剪映同一轨道片段不能重叠，这里按 start 顺序排；若前一条尾巴压到后一条，
+    就把前一条裁短（音效都是点状的，裁尾巴听不出来）。
+    """
+    path = PROMO / "src/data/sfx.json"
+    if not path.is_file():
+        return []
+    try:
+        events = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        return []
+
+    items: list[dict] = []
+    for ev in sorted(events, key=lambda e: float(e.get("t") or 0)):
+        start = round(float(ev.get("t") or 0), 3)
+        dur = round(float(ev.get("duration") or 0.5), 3)
+        if items:
+            prev = items[-1]
+            prev_end = prev["start"] + prev["duration"]
+            if start < prev_end:                      # 同轨不能重叠
+                prev["duration"] = round(max(0.08, start - prev["start"]), 3)
+                prev_end = prev["start"] + prev["duration"]
+            if start - prev_end < 0.04:               # 贴太近会让剪映算成重叠
+                start = round(prev_end + 0.04, 3)
+        items.append({
+            "path": str((pub / "audio" / ev["file"]).resolve()),
+            "start": start,
+            "duration": dur,
+            "volume": round(float(ev.get("volume") or 0.1), 4),
+        })
+    return items
+
+
 def _fill_gaps(items: list[dict], total: float, max_gap: float = 1.0) -> list[dict]:
     """把相邻视频段之间的小空档吃掉（≤max_gap 秒），避免剪映里出现黑闪。
 
@@ -155,11 +190,34 @@ def build_spec(film: dict, name: str, with_elements: bool = True) -> dict:
     #    不同屏时间不重叠，同一条轨可以跨屏复用。
     if with_elements:
         lanes: dict[int, list] = {}
+        icons: list = []          # icon/arrow/dot 走图片轨（PNG 比 emoji 可控）
         for p in panels:
             for i, el in enumerate(p.get("elements") or []):
                 at = p["start"] + float(el.get("at", 0))
                 dur = max(0.4, p["end"] - at)
                 kind = el.get("kind")
+
+                # ---- 图标类：用 public/textures/icons/<name>.png 当图片贴上去
+                if kind in ("icon", "arrow", "dot"):
+                    png = pub / "textures" / "icons" / f"{el.get('name') or kind}.png"
+                    if png.is_file():
+                        px = float(el.get("size") or 84)
+                        icons.append({
+                            "path": str(png.resolve()),
+                            "start": round(at, 3),
+                            "duration": round(dur, 3),
+                            # 剪映把方形图按高度铺满画布 → 想要 px 像素，scale = px / 720
+                            "scale": round(px / 720.0, 4),
+                            "position": [pct(el.get("x", 70)), pct_y(el.get("y", 40))],
+                            "keyframes": [
+                                {"prop": "alpha", "t": round(at, 3), "v": 0.0},
+                                {"prop": "alpha", "t": round(at + 0.24, 3), "v": 1.0},
+                                {"prop": "scale", "t": round(at, 3), "v": round(px / 720.0 * 1.15, 4)},
+                                {"prop": "scale", "t": round(at + 0.26, 3), "v": round(px / 720.0, 4)},
+                            ],
+                        })
+                        continue
+
                 text = el.get("text") or ICON_TEXT.get(el.get("name", ""), "")
                 if not text:
                     continue
@@ -205,6 +263,18 @@ def build_spec(film: dict, name: str, with_elements: bool = True) -> dict:
                 lanes.setdefault(i, []).append(item)
         for i in sorted(lanes):
             tracks.append({"type": "text", "name": f"元素{i + 1}", "items": lanes[i]})
+        # 图标单独一条视频轨（同轨不重叠；跨屏时间不冲突，但要按 start 排序后压尾）
+        if icons:
+            icons.sort(key=lambda x: x["start"])
+            fixed = []
+            for ic in icons:
+                if fixed:
+                    prev = fixed[-1]
+                    prev_end = prev["start"] + prev["duration"]
+                    if ic["start"] < prev_end:
+                        ic["start"] = round(prev_end + 0.04, 3)
+                fixed.append(ic)
+            tracks.append({"type": "video", "name": "图标", "items": fixed})
 
     # 3) 字幕（逐句，凯哥式白字黑边）；sub=false 的卡片句不出字幕（卡片大字已等同这句）
     sub_items = []
@@ -238,6 +308,11 @@ def build_spec(film: dict, name: str, with_elements: bool = True) -> dict:
             "volume": 1.0,
             "fade": {"in": 0.15, "out": 0.3},
         }]})
+
+    # 5) 音效（pipeline/sfx.py 生成；一个音频轨里顺序排，剪映同轨不能重叠）
+    sfx_items = _sfx_items(pub)
+    if sfx_items:
+        tracks.append({"type": "audio", "name": "音效", "items": sfx_items})
 
     return {
         "name": name,

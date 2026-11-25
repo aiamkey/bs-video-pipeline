@@ -1,0 +1,56 @@
+{
+ "_note": "素材库清单：一个角色 × 12 场景 × 3 状态 = 36 张，一次建库、全系列复用。status: have=已有 / missing=待生成。改 action 就能重生成单张。",
+ "character": "亚洲男生，二十岁出头，单眼皮，眉毛平直，鼻梁不高，脸型偏瘦，不戴眼镜，短黑发微乱，穿纯白圆领T恤和深灰长裤",
+ "skeleton": "扁平矢量卡通插画，同一个人物：{character}，{shot}，简洁粗黑描边，低饱和暖色调，画面右侧留白，无文字，{action}",
+ "seed": 20261124,
+ "outdir": "lbr-promo/public/textures/lib",
+ "items": [
+  {"id": "mirror-wrong", "scene": "浴室镜前", "state": "错", "shot": "中景", "action": "皱眉打量镜子里的自己，肩膀塌着，一脸不满意", "file": "mirror-wrong.jpg", "status": "have", "from": "slides/u3b.jpg"},
+  {"id": "mirror-mid", "scene": "浴室镜前", "state": "过渡", "shot": "中景", "action": "抬手拨了拨头发，低头看洗手台", "file": "mirror-mid.jpg", "status": "missing"},
+  {"id": "mirror-right", "scene": "浴室镜前", "state": "对", "shot": "中景", "action": "对着镜子整理领口，抬头挺胸", "file": "mirror-right.jpg", "status": "have", "from": "slides/u4b.jpg"},
+
+  {"id": "sofa-wrong", "scene": "客厅沙发", "state": "错", "shot": "中景", "action": "瘫坐在沙发上盯着手机，屏幕发出冷光", "file": "sofa-wrong.jpg", "status": "have", "from": "slides/u13b.jpg"},
+  {"id": "sofa-mid", "scene": "客厅沙发", "state": "过渡", "shot": "中景", "action": "坐在沙发上把手机扣在腿上，仰头看天花板叹气", "file": "sofa-mid.jpg", "status": "have", "from": "slides/u14b.jpg"},
+  {"id": "sofa-right", "scene": "客厅沙发", "state": "对", "shot": "中景", "action": "从沙发上站起来，顺手把手机放进裤兜", "file": "sofa-right.jpg", "status": "missing"},
+
+  {"id": "bed-wrong", "scene": "深夜卧室", "state": "错", "shot": "中景", "action": "躺着刷手机，屏幕光照在脸上，房间很暗", "file": "bed-wrong.jpg", "status": "have", "from": "slides/u15b.jpg"},
+  {"id": "bed-mid", "scene": "深夜卧室", "state": "过渡", "shot": "中景", "action": "侧身把手机放到床头柜上，眼睛还睁着", "file": "bed-mid.jpg", "status": "missing"},
+  {"id": "bed-right", "scene": "深夜卧室", "state": "对", "shot": "中景", "action": "关灯躺平闭眼睡觉，被子盖到胸口", "file": "bed-right.jpg", "status": "missing"},
+
+  {"id": "metro-wrong", "scene": "地铁车厢", "state": "错", "shot": "中景", "action": "一手抓扶手低头看手机，肩膀塌着", "file": "metro-wrong.jpg", "status": "have", "from": "slides/u5b.jpg"},
+  {"id": "metro-mid", "scene": "地铁车厢", "state": "过渡", "shot": "中景", "action": "收起手机抬头看站牌", "file": "metro-mid.jpg", "status": "missing"},
+  {"id": "metro-right", "scene": "地铁车厢", "state": "对", "shot": "中景", "action": "站直身体看向前方，肩膀打开", "file": "metro-right.jpg", "status": "have", "from": "slides/u6b.jpg"},
+
+  {"id": "noodle-wrong", "scene": "小面馆", "state": "错", "shot": "中景", "action": "一个人低头快速吃面，肩膀缩着", "file": "noodle-wrong.jpg", "status": "have", "from": "slides/u7b.jpg"},
+  {"id": "noodle-mid", "scene": "小面馆", "state": "过渡", "shot": "中景", "action": "放下筷子，抬头看向窗外", "file": "noodle-mid.jpg", "status": "have", "from": "slides/u8b.jpg"},
+  {"id": "noodle-right", "scene": "小面馆", "state": "对", "shot": "中景", "action": "和对面的朋友一起吃饭说笑", "file": "noodle-right.jpg", "status": "missing"},
+
+  {"id": "cafe-wrong", "scene": "咖啡馆", "state": "错", "shot": "中景", "action": "独自坐在角落低头看手机，对面椅子空着", "file": "cafe-wrong.jpg", "status": "missing"},
+  {"id": "cafe-mid", "scene": "咖啡馆", "state": "过渡", "shot": "中景", "action": "把手机扣在桌上，抬头看向对面", "file": "cafe-mid.jpg", "status": "missing"},
+  {"id": "cafe-right", "scene": "咖啡馆", "state": "对", "shot": "中景", "action": "身体前倾和对面的女生聊天，手在比划", "file": "cafe-right.jpg", "status": "missing"},
+
+  {"id": "office-wrong", "scene": "办公室", "state": "错", "shot": "中景", "action": "坐在电脑前加班，揉眼睛，屏幕泛蓝光", "file": "office-wrong.jpg", "status": "have", "from": "slides/u11b.jpg"},
+  {"id": "office-mid", "scene": "办公室", "state": "过渡", "shot": "中景", "action": "站起来伸懒腰，端着杯子往茶水间走", "file": "office-mid.jpg", "status": "missing"},
+  {"id": "office-right", "scene": "办公室", "state": "对", "shot": "中景", "action": "站在工位旁和同事说笑，表情放松", "file": "office-right.jpg", "status": "missing"},
+
+  {"id": "gym-wrong", "scene": "健身房", "state": "错", "shot": "中景", "action": "坐在器械上低头玩手机，衣服很宽松", "file": "gym-wrong.jpg", "status": "missing"},
+  {"id": "gym-mid", "scene": "健身房", "state": "过渡", "shot": "中景", "action": "放下手机站起来，活动手腕", "file": "gym-mid.jpg", "status": "missing"},
+  {"id": "gym-right", "scene": "健身房", "state": "对", "shot": "中景", "action": "正在做哑铃弯举，动作标准，呼吸用力", "file": "gym-right.jpg", "status": "missing"},
+
+  {"id": "street-wrong", "scene": "街头", "state": "错", "shot": "中景", "action": "低头快步走路，肩膀前倾，手插在裤兜", "file": "street-wrong.jpg", "status": "missing"},
+  {"id": "street-mid", "scene": "街头", "state": "过渡", "shot": "中景", "action": "在人行道边停下脚步，四处张望", "file": "street-mid.jpg", "status": "missing"},
+  {"id": "street-right", "scene": "街头", "state": "对", "shot": "中景", "action": "抬头挺胸站着看向远处，一只手自然垂在身侧", "file": "street-right.jpg", "status": "missing"},
+
+  {"id": "door-wrong", "scene": "家门口", "state": "错", "shot": "中景", "action": "站在门口低头看手机，手停在门把手上不动", "file": "door-wrong.jpg", "status": "missing"},
+  {"id": "door-mid", "scene": "家门口", "state": "过渡", "shot": "中景", "action": "扶着门把手，回头看了一眼屋里", "file": "door-mid.jpg", "status": "have", "from": "slides/u12b.jpg"},
+  {"id": "door-right", "scene": "家门口", "state": "对", "shot": "中景", "action": "推开门大步走出去，背对镜头", "file": "door-right.jpg", "status": "missing"},
+
+  {"id": "wardrobe-wrong", "scene": "衣柜前", "state": "错", "shot": "中景", "action": "站在打开的衣柜前，一堆衣服堆在椅子上，抓头", "file": "wardrobe-wrong.jpg", "status": "missing"},
+  {"id": "wardrobe-mid", "scene": "衣柜前", "state": "过渡", "shot": "中景", "action": "从衣柜里抽出一件白T，举在身前比划", "file": "wardrobe-mid.jpg", "status": "missing"},
+  {"id": "wardrobe-right", "scene": "衣柜前", "state": "对", "shot": "中景", "action": "穿好一身干净的深灰上衣和白T，站在衣柜前照镜子", "file": "wardrobe-right.jpg", "status": "missing"},
+
+  {"id": "phone-wrong", "scene": "手机屏特写", "state": "错", "shot": "过肩特写", "action": "手里拿着手机，屏幕上是已读不回的空对话框，只有自己发的三条", "file": "phone-wrong.jpg", "status": "missing"},
+  {"id": "phone-mid", "scene": "手机屏特写", "state": "过渡", "shot": "过肩特写", "action": "手指悬在输入框上打字，打了几个字又删掉", "file": "phone-mid.jpg", "status": "missing"},
+  {"id": "phone-right", "scene": "手机屏特写", "state": "对", "shot": "过肩特写", "action": "把手机屏幕朝下扣在桌面上，手收回来", "file": "phone-right.jpg", "status": "missing"}
+ ]
+}

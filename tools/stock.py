@@ -32,16 +32,22 @@ import subprocess
 import sys
 import time
 import urllib.parse
+from pathlib import Path
 
 import requests
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36"}
 S = requests.Session()
 S.trust_env = False  # 系统代理未开启，直接连
-FFMPEG = os.environ.get(
-    "FFMPEG",
-    r"E:\miniconda\envs\JupyterProject\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v9.0.2.exe",
-)
+
+_HERE = Path(__file__).resolve()
+for _base in (_HERE.parents[1], _HERE.parents[1] / "lbr-promo", _HERE.parent, _HERE.parent / "lbr-promo"):
+    if (_base / "pipeline" / "env.py").is_file():
+        sys.path.insert(0, str(_base / "pipeline"))
+        break
+import env  # noqa: E402  统一环境发现（路径/ffmpeg/python 都从这来）
+
+FFMPEG = env.ffmpeg()
 
 
 def _ok(w, h):

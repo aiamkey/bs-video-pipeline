@@ -117,9 +117,9 @@ add(
 
 emoji_ratio = (kind_counter.get("icon", 0) + kind_counter.get("arrow", 0)) / el_total if el_total else 0
 add(
-    "icon/arrow 占比（剪映里会渲染成 emoji）",
-    f"{emoji_ratio*100:.0f}%",
-    f"≤{EMOJI_RATIO_MAX*100:.0f}%（超了就该换 PNG）",
+    "icon/arrow 占比",
+    f"{emoji_ratio*100:.0f}%（走 PNG 轨，不是 emoji）",
+    f"≤{EMOJI_RATIO_MAX*100:.0f}%（超了元素太碎）",
     emoji_ratio <= EMOJI_RATIO_MAX,
     "WARN" if emoji_ratio > EMOJI_RATIO_MAX else "OK",
 )
@@ -178,8 +178,25 @@ for k, v in dup_bg[:5]:
 no_sub = sum(1 for ln in lines if ln.get("sub") is False)
 add("不出字幕的句子", f"{no_sub}/{len(lines)}", "卡片大字同句时不出",
     True, "OK")
-add("音效条数", "0（film.json 里没有 sfx 字段）", "换屏与元素各挂 1 个",
-    False, "WARN")
+
+# 音效来自 pipeline/sfx.py 生成的 src/data/sfx.json（不铺 BGM，只点状音效）
+sfx_path = Path(args.film).parent / "sfx.json"
+try:
+    sfx = json.loads(sfx_path.read_text(encoding="utf-8")) if sfx_path.is_file() else []
+except ValueError:
+    sfx = []
+n_panel = len(film.get("panels") or [])
+total_s = float(film.get("totalSeconds") or 0) or 1.0
+per_panel = len(sfx) / n_panel if n_panel else 0
+density = len(sfx) / total_s * 60
+if not sfx:
+    add("音效条数", "0（没跑 pipeline/sfx.py）", "每屏 ≥1 条，密度 ≤20 条/分钟",
+        False, "WARN")
+else:
+    add("音效条数", f"{len(sfx)} 条 · {per_panel:.1f} 条/屏 · {density:.1f} 条/分钟",
+        "每屏 ≥1 条，密度 ≤20 条/分钟",
+        per_panel >= 1.0 and density <= 20, "WARN")
+    add("  └ 不铺 BGM", "只有点状音效", "凯哥原片无 BGM", True, "OK")
 
 # ---------- 输出 ----------
 if args.json:

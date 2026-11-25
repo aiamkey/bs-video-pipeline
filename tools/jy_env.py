@@ -224,7 +224,18 @@ def check_pyjianyingdraft() -> str | None:
 
 # ---------------------------------------------------------------- 版本能力表
 
-VERSIONS_FILE = Path(__file__).resolve().parent.parent / "lbr-promo" / "pipeline" / "jy_versions.json"
+def _find_versions_file() -> Path:
+    """版本能力表：仓库布局与工作目录布局都能找到。"""
+    here = Path(__file__).resolve()
+    for base in (here.parents[1], here.parents[1] / "lbr-promo",
+                 here.parent, here.parent / "lbr-promo"):
+        cand = base / "pipeline" / "jy_versions.json"
+        if cand.is_file():
+            return cand
+    return here.parents[1] / "lbr-promo" / "pipeline" / "jy_versions.json"
+
+
+VERSIONS_FILE = _find_versions_file()
 
 
 def _read_versions() -> dict:

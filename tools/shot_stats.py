@@ -6,10 +6,18 @@
 """
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 
-FF = r"E:\miniconda\envs\JupyterProject\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v9.0.2.exe"
+_HERE = Path(__file__).resolve()
+for _base in (_HERE.parents[1], _HERE.parents[1] / "lbr-promo", _HERE.parent, _HERE.parent / "lbr-promo"):
+    if (_base / "pipeline" / "env.py").is_file():
+        sys.path.insert(0, str(_base / "pipeline"))
+        break
+import env  # noqa: E402  统一环境发现（路径/ffmpeg/python 都从这来）
+
+FF = env.ffmpeg()
 
 
 def stats(path, thr=9.0, fps=2, w=160, h=90):

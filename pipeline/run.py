@@ -26,9 +26,13 @@ import sys
 import time
 from pathlib import Path
 
+import env as penv   # 同目录：统一环境发现（路径/ffmpeg/python/tts 配置）
+
 HERE = Path(__file__).resolve().parent
-PROMO = HERE.parent
-ROOT = PROMO.parent
+PROMO = penv.promo()
+ROOT = penv.root()
+
+
 def _load_cfg():
     for name in ("config.local.json", "config.json", "config.example.json"):
         f = HERE / name
@@ -38,8 +42,8 @@ def _load_cfg():
 
 
 CFG, CFG_NAME = _load_cfg()
-PY = CFG["paths"]["python"]
-FF = CFG["paths"]["ffmpeg"]
+PY = penv.python()
+FF = penv.ffmpeg()
 
 
 def run(cmd, cwd=None, env=None, label=""):
@@ -68,8 +72,8 @@ def api_key(provider="dashscope"):
         return os.environ[env_name]
     if CFG.get("keys", {}).get(provider):
         return CFG["keys"][provider]
-    local = Path(r"C:\Users\张宇\.dsh\skills\tts-service\config.local.json")
-    if local.exists():
+    local = penv.tts_config()
+    if local and local.is_file():
         try:
             data = json.loads(local.read_text(encoding="utf-8-sig"))
             if isinstance(data.get(provider), str) and data[provider].startswith("sk-"):
@@ -82,12 +86,18 @@ def api_key(provider="dashscope"):
     return None
 
 
+def script_path() -> Path:
+    """config.project.script 只写文件名，真实目录由 env 发现（scripts/）。"""
+    raw = Path(CFG["project"]["script"])
+    return raw if raw.is_absolute() else (penv.scripts() / raw.name)
+
+
 def stage_voice(name):
     v = CFG["voice"]
     key = api_key("dashscope")
     if not key:
         raise SystemExit("✗ 找不到 DASHSCOPE_API_KEY（环境变量 / config.json keys / tts-service 配置都没有）")
-    run([PY, ROOT / "tools" / "cosy_chapter.py", PROMO / CFG["project"]["script"], name,
+    run([PY, penv.tools() / "cosy_chapter.py", script_path(), name,
          v["voice"], v["rate"], v["gap_between_chapters"], v["silence_keep"]],
         env={"DASHSCOPE_API_KEY": key},
         label=f"配音 · {v['voice']} rate={v['rate']}")
@@ -95,13 +105,13 @@ def stage_voice(name):
 
 def stage_align(name):
     wav = f"{name}.wav"
-    run([PY, ROOT / "tools" / "align_v2.py", wav, PROMO / CFG["project"]["script"], name],
+    run([PY, penv.tools() / "align_v2.py", wav, script_path(), name],
         env={"HF_ENDPOINT": "https://hf-mirror.com"},
         label="对齐 · whisper + difflib")
 
 
 def stage_build(name):
-    run([PY, PROMO / "scripts" / "build_film.py", PROMO / CFG["project"]["script"], name],
+    run([PY, penv.scripts() / "build_film.py", script_path(), name],
         label="生成 film.json")
 
 
@@ -133,7 +143,7 @@ def stage_check(name):
 
 def stage_plan(name):
     """不配音，先算这条稿子会做多长；mode=target 时给出反推建议。"""
-    script = json.loads((PROMO / CFG["project"]["script"]).read_text(encoding="utf-8-sig"))
+    script = json.loads(script_path().read_text(encoding="utf-8-sig"))
     chars = lambda s: len(re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9]", "", s))
     lo, hi = CFG["voice"]["target_cps"]
     cps_mid = (lo + hi) / 2

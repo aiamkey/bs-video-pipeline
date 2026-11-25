@@ -466,3 +466,41 @@ EP02_剪映工程/
 ```
 
 整个目录就是交付物 —— 发给别人、丢进网盘、换机都能直接打开。
+
+---
+
+## 17. 没有 `jyai` 也能出草稿（明文降级）
+
+剪映桥（`jyai`）不是硬依赖。`tools/jy_draft.py` 在 `from jyai import native_crypto` 失败时自动切**明文模式**：
+
+```powershell
+& $py tools\jy_draft.py spec.json            # 有 jyai → 加密 + 首页登记
+& $py tools\jy_draft.py spec.json --plain    # 强制明文
+```
+
+明文模式做的事：`config.material_save_mode = 1`、同步 `Timelines/<id>/draft_content.json`、
+改 `draft_meta_info.json` 的 `draft_fold_path` / `draft_root_path`。
+剪映 11.6 能直接打开明文草稿（用户自己的草稿本来就是明文），只是不走"加密草稿"通道、首页列表要自己找。
+
+启动时会打印这一行，一眼看出走的哪条：
+
+```
+环境：剪映 11.6.0.14552 / 草稿根 E:\...\JianyingPro Drafts / 桥接 jyai（加密+登记）｜无（明文草稿）
+```
+
+## 18. EP02 现在的 9 条轨（对照用）
+
+| 轨 | 类型 | 段数 | 内容 |
+|---|---|---|---|
+| 0 | video | 11 | 底板（每屏一张，`scale 1.0→1.035` 慢推）|
+| 1 | video | 30 | 卡片句抽帧（`tools/jy_cards.py` 产物）|
+| 2–4 | text | 10 / 5 / 3 | 面板元素（按屏内序号分轨，避免同轨重叠）|
+| 5 | **video** | 6 | **图标 PNG**（`kind=icon/arrow/dot`，alpha + scale 入场；`scale = 像素/720`）|
+| 6 | text | 34 | 白字字幕（`NO_SUB` 卡型不出）|
+| 7 | audio | 1 | 配音 |
+| 8 | **audio** | 28 | **音效**（`pipeline/sfx.py`，−18~−22 dB，不铺 BGM）|
+
+图标为什么走 video 轨而不是文字轨：emoji 在剪映里会被渲染成系统彩色表情，跟片子的线条风格不搭；
+PNG 走视频轨才能吃到 alpha 关键帧，且能自由缩放不变形。
+
+音效同轨不能重叠，`jy_from_film._sfx_items()` 已处理（前一条压到后一条就裁尾巴，间隔 <0.04s 后推）。

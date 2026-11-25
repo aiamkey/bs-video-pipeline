@@ -2,7 +2,47 @@
 
 只记**会影响怎么做**的改动（新能力、口径变化、踩坑修正）。参数以 `lbr-promo/pipeline/config.json` 为准。
 
-## 2026-11-25
+## 2026-11-25（上午）
+
+## 2026-11-25（下午）
+
+### 可迁移性：把"作者机器"从代码里彻底拿掉
+
+- 新增 `pipeline/env.py`：**所有路径的唯一解析层**，优先级「环境变量 → `config.json` 的 `paths.*` → 自动探测 → 报错给修法」。
+  导出 `root/promo/scripts/tools/public/data/ffmpeg/python/shotcraft/tts_config` + `summary()`；`python pipeline/env.py` 打印 9 项 ✓/✗ 与修法。
+- 六个硬编码作者路径全部改掉：`tools/align_v2.py`（`ROOT`/`FFMPEG`）、`tools/cosy_chapter.py`（`ROOT`/`TMP`/`FFMPEG`）、
+  `tools/shot_stats.py`（`FF`）、`tools/stock.py`（`FFMPEG`）、`pipeline/preflight.py`（shotcraft 卡库）、`pipeline/run.py`（tts 配置）——
+  统一改成 `import env`，且在仓库布局（`dsh-bs-video/`）与工作树布局（`video/`）下都能定位。
+- `tools/jy_env.py` 的版本表定位改为向上查找 `pipeline/jy_versions.json`，不再假定固定层级。
+- 新增 `tools/check_assets.py`：稿子引用的图在不在（`card.img`/`card.frames[]`/`panel.bg`+`library.json`/`assets.json`），
+  缺图按目录分组打印三种补法；`--soft` 只提示不失败（给 selftest 用）。
+- `pipeline/config.example.json` 与工作树对齐：`video.duration` = `target_sec 150 / tolerance 20% / preferred_sec [120,180] / auto_bounds [30,1200]`，
+  `text.auto_bounds [60,4000]`，`paths` 增 `shotcraft`/`tts_config`，新增 `version: 2`。
+
+### 剪映桥降级：没有 `jyai` 也能出草稿
+
+- `tools/jy_draft.py`：`load_env()` 不再因缺 `jyai` 退出（返回 `have_bridge`）；`finalize(plain=)` 自动回落明文模式
+  （写 `material_save_mode=1`、同步 `Timelines/`、修 `draft_meta_info.json` 的草稿路径）；`--plain` 可强制。
+- 启动行改成一眼可辨的形态：`桥接 jyai（加密+登记）｜无（明文草稿）`。
+
+### 声音层：音效 + 图标真正落地
+
+- 新增 `pipeline/sfx.py`：`film.json` → `src/data/sfx.json`。换屏 `whoosh-fast -20dB`、元素 `pop -18dB`、
+  数字 `sparkle -16dB`、结论 `impact-cine -22dB`、章节 `transition-snap -19dB`；`DEBOUNCE 0.20s` 去重取更响；
+  **全片不铺 BGM**（凯哥原片实测无 BGM）。EP02 实测 28 条 / 2.5 条每屏 / 14.3 条每分钟。
+- `tools/mk_icons.py`：11 个图标 PNG（check/cross/house/family/clock/phone/money/up/down/arrow/dot），
+  统一 256px、16px 描边、墨绿/红/近黑三色，与 `Panel.tsx` 的 SVG 同形状。
+- `tools/jy_from_film.py`：`kind=icon/arrow/dot` 的元素改走**图标 PNG 轨**（video 轨 + alpha/scale 关键帧，`scale = 像素/720`），
+  不再用 emoji 文字；新增**音效轨**（同轨去重叠：压到就裁尾、间隔 <0.04s 后推）。
+  EP02 现在是 **9 轨 127 段**，`jy_check` 报 `videos 47 / audios 29 / 无黑场 / 素材本地化 76 个内嵌 0 个外链`。
+- `pipeline/audit.py`：「音效条数」判据改为读 `src/data/sfx.json`（每屏 ≥1 条且密度 ≤20 条/分钟），
+  并新增「不铺 BGM 只有点状音效」一项；icon 判据文案改为「走 PNG 轨，不是 emoji」。
+
+### 冒烟自检布局无关
+
+- `pipeline/selftest.py` 改用 `env` 的路径，10 项：`envresolve / config / assets / film / audit / spec / env / audio / draft`；
+  仓库空布局实测 `3 通过 / 0 失败 / 6 跳过`（跳过项都是生成物未产生），工作树实测 `10 通过 / 0 失败`。
+
 
 ### 结构：把"一个巨大 SKILL"拆成能查的东西
 

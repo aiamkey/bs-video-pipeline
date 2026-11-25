@@ -9,6 +9,10 @@
 |---|---|---|
 | 从零出一条片 | `lbr-promo\pipeline\run.py all <name>` | `out/<name>-final.mp4` |
 | 只估算时长/字数，不花钱 | `lbr-promo\pipeline\run.py plan <name> [script]` | 秒数 + 字数 + rate 建议 |
+| 换台机器 / 换盘符跑不起来 | `pipeline/env.py` | 9 项路径解析结果 + 每项修法 |
+| 素材缺不缺、缺哪张 | `tools/check_assets.py` | 缺图清单（按目录分组）+ 三种补法 |
+| 音效挂点（换屏/元素/数字/结论） | `pipeline/sfx.py` | `src/data/sfx.json`（28 条事件） |
+| 重新生成 11 个图标 PNG | `tools/mk_icons.py` | `public/textures/icons/*.png` |
 | 检查排布（元素/单镜/素材复用） | `lbr-promo\pipeline\audit.py` | FAIL / WARN 列表，FAIL 拦渲染 |
 | 检查成片（时长/响度/静止/字速） | `lbr-promo\pipeline\check.py <name> [mp4]` | 11 项体检 |
 | 把 film.json 变成剪映工程 | `tools\jy_from_film.py` | spec json → `jy_draft.py` |

@@ -17,6 +17,7 @@ description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋�
 ```powershell
 $py = "E:\miniconda\envs\JupyterProject\python.exe"
 $env:NO_PROXY = "dashscope.aliyuncs.com"
+& $py lbr-promo\pipeline\env.py                                   # ⓪ 换机器先看这个：9 项路径全自动解析
 & $py lbr-promo\pipeline\selftest.py                                # ⓪ 30 秒冒烟：链路还是好的吗
 & $py lbr-promo\pipeline\audit.py                                   # ① 排布体检（FAIL 就别渲染）
 & $py lbr-promo\pipeline\run.py all ep02 scripts\script-ep02.json   # ② 一条片
@@ -110,6 +111,9 @@ check    文件大小 静止阈值 采样帧率
 | `pipeline/TOOLS.md` | **工具索引 + 负面清单 13 条** |
 | `pipeline/TROUBLES.md` | **故障对照 30 条** |
 | `pipeline/COST.md` | 成本与时间预算（一条片 ≈1.8 元 / 1.5–2 小时） |
+| `pipeline/env.py` | **路径唯一解析层**：环境变量 → config.json → 自动探测；换机器/换盘符只改这层 |
+| `pipeline/sfx.py` | **音效挂点生成**（换屏/元素/数字/结论 → `src/data/sfx.json`，不铺 BGM） |
+| `tools/check_assets.py` | **素材缺口体检**（稿子引用的图在不在，缺了给三种补法） |
 | `pipeline/selftest.py` | **30 秒冒烟自检**（不联网不渲染） |
 | `pipeline/jy_versions.json` | **剪映版本能力表**（new_version / placeholder / 已验证能力） |
 | `pipeline/run.py` | 六个阶段 + plan + all |

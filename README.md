@@ -9,17 +9,41 @@
 ## 30 秒上手
 
 ```bash
+# 0 环境自检：路径 / ffmpeg / python 全部自动发现，哪项缺会指出来
+python pipeline/env.py
+
 # 1 体检（缺什么会直接告诉你装什么）
 python pipeline/preflight.py
 
 # 2 缺依赖就一键装
 python pipeline/preflight.py --install
 
-# 3 跑一条
+# 3 复制一份自己的配置（config.json 不进 git）
+cp pipeline/config.example.json pipeline/config.json
+
+# 4 看素材缺哪些（成图不进 git，这一步会列出缺口与生成命令）
+python tools/check_assets.py
+
+# 5 跑一条
 python pipeline/run.py all ep02 scripts/script-ep02.json
 ```
 
 产物在 `remotion/out/ep02-final.mp4`。
+
+> 换自己的片子：复制 `scripts/script-ep02.json` 改文案与卡片，改 `pipeline/config.json` 里的参数，重跑。
+
+### 环境变量（都不设也能跑，会自动探测）
+
+| 变量 | 作用 | 不设时 |
+|---|---|---|
+| `LBR_ROOT` | 工程根（含 `pipeline/ tools/ scripts/`） | 脚本所在位置推出来 |
+| `LBR_PROMO` | 视频工程（含 `remotion/ public/`） | `config.json` 的 `paths.promo` → 自动探测 |
+| `FFMPEG` | ffmpeg 可执行文件 | `config.json` → PATH → `imageio-ffmpeg` 自带那份 |
+| `PYTHON` | 指定解释器 | `config.json` → 当前解释器 |
+| `DASHSCOPE_API_KEY` | 配音 / 生图 | `config.json` 的 `keys` → `~/.dsh/skills/tts-service/config.local.json` |
+| `VIDEO_SHOTCRAFT` | 卡库（找灵感，可选） | 自动找同级 `video-shotcraft` |
+
+**没有一处写死机器路径**：所有工具都 `import pipeline/env.py`，换设备、换盘符只改环境变量或 `config.json`。
 
 > 换自己的片子：复制 `scripts/script-ep02.json` 改文案与卡片，改 `pipeline/config.example.json` 里的参数，重跑。
 
@@ -43,14 +67,23 @@ python pipeline/run.py all ep02 scripts/script-ep02.json
 
 ```
 pipeline/
-  config.example.json   所有可调参数（复制成 config.local.json 再改）
+  config.example.json   所有可调参数（复制成 config.json 再改；config.json 不进 git）
+  env.py                统一环境发现：路径 / ffmpeg / python / 剪映 / tts 配置（换机器只改这层）
   run.py                一条命令跑完：voice → align → build → render → mix → check
-  check.py              11 项自动质检
+  audit.py              渲染前排布体检（元素位置 / label 占比 / 时长 / 音效密度）
+  check.py              11 项成片质检（响度只看 *-final.mp4）
+  sfx.py                film.json → 音效事件（换屏 whoosh / 元素 pop / 数字 sparkle / 结论 impact）
   preflight.py          依赖自检 / 自动安装
+  selftest.py           10 项冒烟：不联网不渲染，30 秒回答"这条链还是好的吗"
   README.md             怎么用、改哪个字段
+  TOOLS.md              工具索引（我在做什么 → 调哪个）+ 反面清单
+  TROUBLES.md           30 条故障对照（按"最先想到的"排序）
+  COST.md               一条片多少钱、多少时间；哪些付费能力值得接
   SPEC.md               内容 / 文稿 / 动画 / 素材 / 流程的完整规格
   ANIMATION.md          动画与转场的"看起来该是什么样"
   CARTOON.md            卡通素材的数量、节拍与衔接六法
+  JIANYING.md           film.json → 剪映工程（含明文降级、可迁移素材、美颜花字）
+  jy_versions.json      剪映版本能力表（哪版验证过、new_version 该写多少）
 scripts/
   script-*.json         逐句文稿 + 每句的画面卡
   build_film.py         文稿 + 时间轴 → film.json
@@ -58,12 +91,28 @@ tools/
   cosy_chapter.py       按章合成配音（cosyvoice-v2）
   align_v2.py           whisper 词级对齐 → timeline.json
   img.py                文生图（多 provider，支持 --seed 锁角色）
+  mk_icons.py           11 个图标 PNG（check/cross/house/clock/phone/…）
+  check_assets.py       素材体检：稿子引用的图在不在，缺了怎么补
   shot_stats.py         测镜头密度 / 静止占比
+  jy_env.py / jy_draft.py / jy_from_film.py / jy_check.py / jy_localize.py / jy_beauty.py
+                        film.json → 剪映工程（可选，见 JIANYING.md）
 remotion/
+  src/bs/Panel.tsx      一屏多句 + 元素累加（7 种元素）
   src/bs/Cards.tsx      19 种卡片组件
-  src/bs/DataFilm.tsx   渲染入口（读 film.json，逐句一镜）
+  src/bs/DataFilm.tsx   渲染入口（读 film.json；DataFilmNoSub 不带字幕，用来抽卡片帧）
   src/Root.tsx          composition 注册
 ```
+
+### 素材为什么不进 git
+
+`remotion/public/textures/slides/`（卡通场景，约 11 MB）与 `lib/`（留白底板，约 8 MB）是 **AI 生成的成图**，
+体积大且可按 `pipeline/library.json` 重新生成，所以不随仓库分发。clone 之后：
+
+```bash
+python tools/check_assets.py        # 列出缺哪些、按提示补
+```
+
+缺图时流水线仍能跑（对应位置是底色块），只是画面不完整——用来先验证节奏是够的。
 
 ---
 

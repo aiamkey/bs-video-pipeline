@@ -10,14 +10,16 @@
     "python": "python",
     "ffmpeg": "ffmpeg",
     "root": ".",
-    "promo": "remotion"
+    "promo": "remotion",
+    "shotcraft": "",
+    "tts_config": ""
   },
   "text": {
     "sentence_min_chars": 8,
     "sentence_max_chars": 18,
     "auto_bounds": [
       60,
-      1200
+      4000
     ],
     "total_chars": [
       480,
@@ -64,11 +66,15 @@
     "_duration说明": "mode=auto 时长随稿子走、不限目标；mode=target 按 target_sec±tolerance_pct 卡死，run.py plan 会反推需要的字数/语速。",
     "duration": {
       "mode": "auto",
-      "target_sec": 100,
-      "tolerance_pct": 8,
+      "target_sec": 150,
+      "tolerance_pct": 20,
       "auto_bounds": [
         30,
-        600
+        1200
+      ],
+      "preferred_sec": [
+        120,
+        180
       ]
     },
     "shot_median_sec": [
@@ -131,5 +137,6 @@
     "api_key_env": "DASHSCOPE_API_KEY",
     "api_key": "",
     "timeout": 180
-  }
+  },
+  "version": 2
 }

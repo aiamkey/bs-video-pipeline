@@ -16,9 +16,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-PROMO = ROOT / "lbr-promo"
-PY = sys.executable
+import env  # 同目录：统一环境发现
+
+ROOT = env.root()
+PROMO = env.promo()
+PY = env.python()
+SCRIPTS = env.scripts()
+TOOLS = env.tools()
+DATA = env.data()
 
 RESULTS: list[tuple[str, str, str]] = []  # (level, name, detail)
 
@@ -47,8 +52,11 @@ def run(args: list[str], timeout: int = 120) -> tuple[int, str]:
 # ------------------------------------------------------------------ 各项检查
 
 def t_config() -> None:
-    path = PROMO / "pipeline" / "config.json"
+    path = env.HERE / "config.json"
     if not path.is_file():
+        if (env.HERE / "config.example.json").is_file():
+            return skip("config.json 存在",
+                        "只有 config.example.json → cp pipeline/config.example.json pipeline/config.json")
         return bad("config.json 存在", str(path))
     try:
         cfg = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -62,7 +70,7 @@ def t_config() -> None:
 
 
 def t_film() -> None:
-    path = PROMO / "src" / "data" / "film.json"
+    path = DATA / "film.json"
     if not path.is_file():
         return skip("film.json 结构", "还没 build 过，先跑 build_film.py")
     try:
@@ -83,7 +91,7 @@ def t_film() -> None:
 
 
 def t_audit() -> None:
-    code, out = run([PY, str(PROMO / "pipeline" / "audit.py")])
+    code, out = run([PY, str(env.HERE / "audit.py")])
     tail = [ln for ln in out.strip().splitlines() if ln.strip()][-1:] or [""]
     if code == 0:
         ok("audit.py 无 FAIL", tail[0].strip())
@@ -94,11 +102,11 @@ def t_audit() -> None:
 
 
 def t_spec() -> None:
-    if not (PROMO / "src" / "data" / "film.json").is_file():
+    if not (DATA / "film.json").is_file():
         return skip("film.json → spec", "没有 film.json")
     spec_out = ROOT / "qa2" / "_selftest-spec.json"
     spec_out.parent.mkdir(exist_ok=True)
-    code, out = run([PY, str(ROOT / "tools" / "jy_from_film.py"),
+    code, out = run([PY, str(TOOLS / "jy_from_film.py"),
                      "--spec-out", str(spec_out)])
     if code != 0 or not spec_out.is_file():
         return bad("film.json → spec", out.strip().splitlines()[-1] if out.strip() else f"exit={code}")
@@ -107,7 +115,7 @@ def t_spec() -> None:
     items = sum(len(t.get("items") or []) for t in tracks)
     ok("film.json → spec", f"{len(tracks)} 轨 / {items} 段")
 
-    code2, out2 = run([PY, str(ROOT / "tools" / "jy_draft.py"), str(spec_out), "--validate"])
+    code2, out2 = run([PY, str(TOOLS / "jy_draft.py"), str(spec_out), "--validate"])
     if code2 == 0:
         ok("spec 契约校验", out2.strip().splitlines()[-1])
     else:
@@ -116,7 +124,7 @@ def t_spec() -> None:
 
 
 def t_env() -> None:
-    code, out = run([PY, str(ROOT / "tools" / "jy_env.py"), "--check"])
+    code, out = run([PY, str(TOOLS / "jy_env.py"), "--check"])
     if code != 0:
         return bad("jy_env --check", out.strip().splitlines()[-1] if out.strip() else f"exit={code}")
     lines = [ln for ln in out.strip().splitlines() if ln.strip()]
@@ -126,8 +134,28 @@ def t_env() -> None:
     ok("剪映版本能力表", version_line)
 
 
+def t_envresolve() -> None:
+    rows = env.summary()
+    bads = [f"{label}" for label, _v, st in rows if st.startswith("✗")]
+    if bads:
+        return bad("环境解析（pipeline/env.py）", "缺 " + ", ".join(bads))
+    ok("环境解析（pipeline/env.py）",
+       f"ffmpeg {'有' if env.ffmpeg() else '无'} / 资源目录 {env.public().name}")
+
+
+def t_assets() -> None:
+    code, out = run([PY, str(TOOLS / "check_assets.py"), "--soft"])
+    first = next((ln for ln in out.splitlines() if ln.strip()), "")
+    if "缺 0" in first or code == 0 and "缺 0" in out:
+        ok("素材清单", first.replace("素材体检：", ""))
+    elif "缺" in first:
+        skip("素材清单", first.replace("素材体检：", "") + "（图不进 git，按 check_assets 提示补）")
+    else:
+        skip("素材清单", first or f"exit={code}")
+
+
 def t_audio() -> None:
-    v = PROMO / "public" / "audio"
+    v = env.public("audio")
     if not v.is_dir():
         return skip("配音文件", "public/audio 不存在")
     wavs = sorted(v.glob("*.wav"))
@@ -139,7 +167,7 @@ def t_audio() -> None:
 
 def t_draft() -> None:
     try:
-        sys.path.insert(0, str(ROOT / "tools"))
+        sys.path.insert(0, str(TOOLS))
         import jy_env  # noqa: PLC0415
 
         root = jy_env.discover().get("drafts_root")
@@ -151,14 +179,14 @@ def t_draft() -> None:
     if not drafts:
         return skip("最近草稿可读", "草稿根下没有草稿")
     newest = max(drafts, key=lambda p: p.stat().st_mtime)
-    code, out = run([PY, str(ROOT / "tools" / "jy_check.py"), str(newest)], timeout=180)
+    code, out = run([PY, str(TOOLS / "jy_check.py"), str(newest)], timeout=180)
     if code != 0:
         return bad("最近草稿可读", f"{newest.name}: exit={code}")
     local_line = next((ln for ln in out.splitlines() if "素材本地化" in ln), "")
     ok("最近草稿可读", f"{newest.name} · {local_line.strip() or '未见本地化栏'}")
 
 
-CHECKS = [t_config, t_film, t_audit, t_spec, t_env, t_audio, t_draft]
+CHECKS = [t_envresolve, t_config, t_assets, t_film, t_audit, t_spec, t_env, t_audio, t_draft]
 
 
 def main() -> int:

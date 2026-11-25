@@ -79,26 +79,33 @@ KP_MAP = {
 # ------------------------------------------------------------------ portable env
 
 def load_env() -> dict:
-    """Discover JianYing env; export JY_* so the native bridge works anywhere."""
+    """Discover JianYing env; export JY_* so the native bridge works anywhere.
+
+    剪映 skill（jyai）是**可选**的：没有它也能写明文草稿（剪映自己就能读明文），
+    只是少了自动加密与首页登记。所以这里不再因为它缺失就退出。
+    """
     import jy_env
 
     info = jy_env.discover()
-    if not info.get("skill_scripts"):
-        raise SystemExit("找不到剪映 skill：把 jianying-editor-11-5 放到 ~/.dsh/skills/，"
-                         "或设 JY_SKILL_SCRIPTS 指向其 scripts 目录")
     if not info.get("drafts_root"):
         raise SystemExit("找不到剪映草稿目录：先在剪映里随便建一个草稿，或设 JY_DRAFTS_ROOT")
 
-    os.environ.setdefault("JY_SKILL_SCRIPTS", info["skill_scripts"])
-    if info.get("app_version"):
-        os.environ.setdefault("JY_APP_VERSION", info["app_version"])
-    os.environ.setdefault("JY_DRAFT_NEW_VERSION", info.get("new_version") or "110.0.0")
-    if info.get("placeholder"):
-        os.environ.setdefault("JY_PLACEHOLDER", info["placeholder"])
-
-    scripts = pathlib.Path(info["skill_scripts"])
-    if str(scripts) not in sys.path:
-        sys.path.insert(0, str(scripts))
+    scripts = info.get("skill_scripts")
+    info["have_bridge"] = bool(scripts)
+    if scripts:
+        os.environ.setdefault("JY_SKILL_SCRIPTS", scripts)
+        if info.get("app_version"):
+            os.environ.setdefault("JY_APP_VERSION", info["app_version"])
+        os.environ.setdefault("JY_DRAFT_NEW_VERSION", info.get("new_version") or "110.0.0")
+        if info.get("placeholder"):
+            os.environ.setdefault("JY_PLACEHOLDER", info["placeholder"])
+        scripts = pathlib.Path(scripts)
+        if str(scripts) not in sys.path:
+            sys.path.insert(0, str(scripts))
+    else:
+        print("· 没找到剪映 skill（jyai）：将写明文草稿，剪映照样能打开。")
+        print("  想要自动加密 + 首页登记：把 jianying-editor-11-5 放进 ~/.dsh/skills/，"
+              "或设 JY_SKILL_SCRIPTS 指向它的 scripts 目录。")
     return info
 
 
@@ -263,7 +270,7 @@ def build(spec: dict) -> pathlib.Path:
 
     if spec.get("dry_run"):
         return out
-    return finalize(out)
+    return finalize(out, plain=bool(spec.get("plain")))
 
 
 def _make_segment(d, ttype, it, rng):
@@ -412,15 +419,29 @@ def _tj():
 
 # ------------------------------------------------------------------ finalize
 
-def finalize(draft_dir: pathlib.Path) -> pathlib.Path:
-    """Normalize dangling refs, then encrypt + write timelines + register."""
-    from jyai import native_crypto as nc
+def finalize(draft_dir: pathlib.Path, plain: bool = False) -> pathlib.Path:
+    """Normalize dangling refs; then encrypt + write timelines + register.
 
+    plain=True（或找不到 jyai）时只写明文 `draft_content.json` + `draft_meta_info.json`，
+    剪映 11.x 能直接打开；差别是没有加密、可能不出现在首页（用「导入草稿」/最近项目打开）。
+    """
     content = draft_dir / "draft_content.json"
+
+    nc = None
+    if not plain:
+        try:
+            from jyai import native_crypto as nc_mod
+            nc = nc_mod
+        except Exception:
+            print("· jyai 不可用 → 走明文模式")
+            plain = True
+
     if content.read_bytes()[:1] == b"{":
         doc = json.loads(content.read_text(encoding="utf-8"))
-    else:
+    elif nc is not None:
         doc = json.loads(nc.read_bytes(content).decode("utf-8", "ignore"))
+    else:
+        raise SystemExit(f"✗ {content} 是加密的，但没有 jyai 解不开；请用 --plain 重新生成")
 
     ids = {m["id"] for k, v in doc["materials"].items() if isinstance(v, list)
            for m in v if isinstance(m, dict) and "id" in m}
@@ -435,12 +456,34 @@ def finalize(draft_dir: pathlib.Path) -> pathlib.Path:
                     seg[field] = kept
     if stripped:
         print(f"清理悬空引用：{stripped} 条")
+    content.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+
+    if plain:
+        # 明文模式：补素材保存方式 + 时间线副本，剪映就能读
+        doc.setdefault("config", {})["material_save_mode"] = 1
         content.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        tl = draft_dir / "Timelines" / str(doc.get("id") or "timeline")
+        tl.mkdir(parents=True, exist_ok=True)
+        (tl / "draft_content.json").write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        meta = draft_dir / "draft_meta_info.json"
+        if meta.is_file():
+            try:
+                m = json.loads(meta.read_text(encoding="utf-8-sig"))
+                m["draft_fold_path"] = str(draft_dir)
+                m["draft_root_path"] = str(draft_dir.parent)
+                meta.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+            except ValueError:
+                pass
+        print("明文草稿：完成（剪映里用「导入草稿」或最近项目打开）")
+        print(f"草稿目录：{draft_dir}")
+        return draft_dir
 
     import native_compat
     result = native_compat.finalize(str(draft_dir), register=True)
     ok = result.get("static_valid")
     print(f"加密+登记：{'成功' if ok else '有问题'}  issues={result.get('issues')}")
+    if not ok:
+        print("  提示：加 --plain 可跳过加密，直接出明文草稿")
     print(f"草稿目录：{draft_dir}")
     return draft_dir
 
@@ -477,6 +520,8 @@ def main(argv):
     spec = json.loads(spec_path.read_text(encoding="utf-8-sig"))
     if "--dry-run" in argv:
         spec["dry_run"] = True
+    if "--plain" in argv:                      # 不加密，只写明文草稿
+        spec["plain"] = True
 
     info = load_env()
     spec.setdefault("drafts_root", info["drafts_root"])
@@ -493,7 +538,9 @@ def main(argv):
         print(f"spec 校验通过：{n_tracks} 条轨 / {n_items} 个片段")
         return 0
 
-    print(f"环境：剪映 {info['app_version']} / 草稿根 {spec['drafts_root']}")
+    ver = info.get("app_version") or "未知"
+    bridge = "jyai（加密+登记）" if info.get("have_bridge") else "无（明文草稿）"
+    print(f"环境：剪映 {ver} / 草稿根 {spec['drafts_root']} / 桥接 {bridge}")
 
     t0 = time.time()
     out = build(spec)
