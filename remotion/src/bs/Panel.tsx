@@ -218,7 +218,34 @@ const El: React.FC<{ el: PanelEl; frame: number }> = ({ el, frame }) => {
       );
     case 'box':
       return (
-        <div style={{ ...base, width: el.w ?? 420, height: el.size ?? 220, border: `5px dashed ${el.color ?? RED}`, borderRadius: 14 }} />
+        <div
+          style={{
+            ...base,
+            width: el.w ?? 420,
+            background: el.text ? 'rgba(18,16,13,0.86)' : 'transparent',
+            border: el.text ? 'none' : `5px dashed ${el.color ?? RED}`,
+            borderLeft: el.text ? `10px solid ${el.color ?? RED}` : undefined,
+            borderRadius: 12,
+            padding: el.text ? '16px 22px' : 0,
+            height: el.text ? undefined : (el.size ?? 220),
+            boxSizing: 'border-box',
+          }}
+        >
+          {el.text ? (
+            <div
+              style={{
+                fontFamily: SANS,
+                fontSize: el.size ?? 34,
+                fontWeight: 800,
+                color: '#fff',
+                lineHeight: 1.28,
+                letterSpacing: 0.5,
+              }}
+            >
+              {el.text}
+            </div>
+          ) : null}
+        </div>
       );
     default:
       return null;
