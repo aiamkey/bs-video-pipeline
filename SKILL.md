@@ -1,6 +1,6 @@
 ---
 name: bs-video-pipeline
-description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、加卡通幻灯片素材、排查字幕不同步/闪白/静止过长/音色问题、或想知道某个动画该长什么样时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
+description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、排查字幕不同步/闪白/静止过长/元素排布像PPT/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
 ---
 
 # 男生变帅号 · 视频流水线
@@ -96,6 +96,23 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"          # 必设，否则 requests 走
 
 ---
 
+### 2.5 一条片从零到交付（九步，按顺序走）
+
+| 步 | 做什么 | 产物 / 命令 | 卡住时的症状 |
+|---|---|---|---|
+| 0 选题 | 从高赞标题里挑**男生自己会承认**的痛点 | 一句话选题 | 选题没痛点 → 后面怎么剪都平 |
+| 1 写稿 | `scripts/script-XX.json`，5–6 章 × 8–12 句，单句 ≤18 字 | 55 句 / 630 字 ≈ 117s | 超 25 字 → 字幕换行难看 |
+| 2 估时 | `run.py plan XX` | 只看时长/字数，不花钱 | 估 105s 实出 103s（误差 2%）属正常 |
+| 3 分屏 | 把连续同空间的句子标成同一 `panel`，写 `bg` + `el` | 每屏 2–4 句 | 分不出来 → 说明稿子没"场景感" |
+| 4 配图 | 每屏一张 `-air` 底板；每卡一张素材 | `public/textures/lib/*.jpg` | 找不到就 `img.py` 生成，别硬凑 |
+| 5 配音 | `run.py voice XX` | `public/audio/XX.wav` | 断触 → 检查是不是按章合成 |
+| 6 对齐 | `run.py align XX` | `src/data/XX-timeline.json` | 字符匹配 <100% → 稿子有错字 |
+| 7 合成 | `run.py build XX scripts/script-XX.json` | `film.json`（会打印 panel 列表） | 打印里 panel 数是 0 → `panel` 字段写错 |
+| 8 渲染 | `run.py render XX` | `out/XX-raw.mp4` | 404 图片 → 路径是相对 `public/` |
+| 9 混音质检 | `run.py mix XX` + `check.py XX` + 盲听盲看 | `out/XX-final.mp4` | 见 §7 / §7.5 |
+
+`run.py all XX scripts/script-XX.json` 一次跑 5–9 步；**但第 3、4 步永远是人做的**。
+
 ## 3. 文稿
 
 `lbr-promo/scripts/script-XX.json`，`chapters[].lines[].{text,gap,card}`。
@@ -162,7 +179,126 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"          # 必设，否则 requests 走
 
 ---
 
+### 5.6 Panel（一屏多句，默认排法）
+
+**这是凯哥真正的手法，比"一句一镜"更高一级。**
+
+实测：`v3-pinlv.mp4` 280–287s 男主画面**连续 8 秒没换**，283s 只插 0.5s 女生反应图；492–499.5s 粉色底板不动，元素逐个长出来（对话框→房子→一家三口→箭头）。帧差：286s 边缘差 0.57 / 主体差 0.27——**像素级静止**。
+
+所以"衔接好"不是生成质量，是**根本没换画面**。
+
+### 写法（script json）
+
+```json
+{"text": "你以为这叫真诚。", "panel": {"id": "p2", "bg": "textures/lib/sofa-air.jpg"},
+ "el": {"kind": "bubble", "text": "我在等她回", "x": 74, "y": 26, "w": 300, "size": 30}},
+{"text": "在女生眼里，这叫没有生活。", "panel": "p2",
+ "el": {"kind": "label", "text": "没有生活", "x": 74, "y": 50, "size": 32}},
+{"text": "你把她当回事，她不把你当回事。", "panel": "p2",
+ "el": {"kind": "num", "text": "0", "x": 76, "y": 70, "size": 150}}
+```
+
+- 同 `panel` 值的**连续句子**合成一屏，底板固定，字幕仍按句走
+- 屏内句子**不要再写 card**（写了会被忽略）
+- 一屏 2–4 句 = 5–9 秒；超过 4 句就换屏
+
+### 元素（7 种）
+
+| kind | 用途 | 关键参数 |
+|---|---|---|
+| `bubble` | 对话气泡（白底黑框带尾巴） | `text` `w` `size` |
+| `label` | 标签块（默认红底白字） | `text` `size` `color` |
+| `num` | 超大数字（默认红） | `text` `size` |
+| `icon` | 线性图标 | `name` `size` `color` |
+| `arrow` | 长箭头 | `size` `color` |
+| `dot` | 红点 + 文字 | `text` `size` |
+| `box` | 虚线框高亮 | `w` `size` |
+
+`icon.name`：`check` `cross` `house` `family` `clock` `phone` `money` `up` `down` `arrow`
+
+坐标 `x/y` 是百分比（元素中心），已做 12–88% / 12–84% 钳制，不会出画。**y 不要超过 74%**（会和字幕撞）。
+
+### 排布三规则（不做就是"PPT 列表"）
+
+写完第一版 panel 我统计了 25 个元素：**x 只有 74 和 76 两个值，全在右边缘一列**；
+`label` 占 40%。看片的感觉是"右边挂了个信息栏"，不是"画面在演"。
+
+| 规则 | 具体要求 | 反例 |
+|---|---|---|
+| 1 禁一列 | 同屏 ≥3 元素时，x 必须跨 **2 个以上区域**（左 20–35 / 中 45–55 / 右 65–80 各选） | 三个元素全 74，竖排 |
+| 2 label ≤ 1 | 每屏最多 1 个 `label`，其余必须是 `bubble`（具体台词）或 `icon`（状态） | "没有生活""需要争取""怕被拒绝" 连贴三屏 |
+| 3 可压人物 | 元素允许半压人物（凯哥的对话框经常压到脸边），只要不遮眼睛 | 全部躲在最右侧空白处 |
+
+y 建议分档 **24 / 48 / 70**，三个元素错开；超过 74 会撞字幕。
+
+> 记住凯哥的元素是**在讲故事**：`她：哦`（气泡）→ `3`（数字）→ 房子+一家三口（图标）。
+> 不是"关键词列表"。写元素前先问：**这个元素是在演，还是在复读？**
+
+### 哪些句子该进 panel
+
+不是所有句子都能并屏。判据按顺序：
+
+1. **同一空间、同一动作链**（都在沙发上 → 可以并）
+2. **口语上是一口气**（逗号结尾、或者后句是前句的补充 → 可以并）
+3. **中间没有换卡型的必要**（section / board / wrong / stat / outro 一律独立，不进 panel）
+4. 一屏 **2–4 句 / 5–9 秒**；超过 4 句就断屏，否则元素挤成一片
+
+理想比例：**一集 55 句 → 11–14 屏覆盖 60–70% 时长**，剩下 30–40% 给章节标题、黑板、红叉、大字、outro。
+
+### 底板必须"留白"
+
+元素要放在空白处，所以底板不能人物占满。生图提示词必须包含：
+
+```
+人物位于画面左侧三分之一处，画面右侧三分之二是干净的空墙
+```
+
+成品底板存 `public/textures/lib/{scene}-air.jpg`（`-air` 后缀 = 留白版）。
+没有留白的图只能做"整屏卡片"，不能做 panel。
+
+### 验收
+
+抽 2 帧（同屏首句、末句），比**画面边缘 10% 区域**的平均色差：
+- <12 → 底板稳定，合格
+- 12–25 → 轻微漂移，可接受
+- >25 → 换图了，检查是不是写错 panel id
+
+
 ## 6. 素材
+
+### 6.0 他到底有没有素材库（实测，别再猜）
+
+拿 4 集、每 2s 抽帧共 1316 帧，筛出卡通 997 帧，算 16×16 dHash 两两比：
+
+| | 抽帧 | 卡通帧 | 跨集近重复 (d≤12) |
+|---|---|---|---|
+| v1 锐评变帅 654s | 327 | 250 | — |
+| v2 朋友圈 698s | 349 | 238 | — |
+| v3 聊天频率 632s | 316 | 302 | — |
+| v4 土纯风 648s | 324 | 207 | — |
+| 合计 | 1316 | **997** | **0 对** |
+
+**结论一：他没有买公共素材包**——997 张跨 4 集一对重复都没有，公共包必然撞图。
+
+**结论二：但角色是固定的**——v3/v4 的男主是同一人（黑衬衫、黑乱发、细长眼、粗描边），v4 还配了固定的粉发女配。
+
+**结论三：同集内几乎不复用**——按"间隔 ≥6s"过滤（排除同镜停留的假重复）：
+
+| | 跨镜复用 | 最长间隔 |
+|---|---|---|
+| v1 | 0 处 | — |
+| v2 | 0 处（79 对都在同一镜停留段内） | — |
+| v3 | 7 处 | 164s |
+| v4 | 2 处 | 24s |
+
+所以他的"素材库"是 **角色 + 提示词模板**，不是图片库：定 1 个男主（+ 可选女配），每集按脚本现做 20–40 张新图，一集里基本一张只用一次。
+
+> 对我们意味着：**别囤图，囤"角色设定 + 12 张 air 底板"**。
+> 36 张库不是"一集用完"，是"两周不用补"。
+
+**顺手否掉的另两个猜测**（都有反证）：
+- `7210` 水印不是素材商编号——真人镜头也盖着它，是成片后统一打的团队/防搬运编号。
+- 配音不是 AI——F0 中位 163Hz、p10 104 / p90 262（跨度 158Hz）、RMS 动态 7.1dB，AI 男声跨度普遍 60–100Hz。而且"没有气口"是**剪气口**的结果，不能反推 AI。
 
 ### 6.1 形态铁律：卡通为主，字幕常驻
 
@@ -286,6 +422,35 @@ $base="扁平矢量卡通插画，同一个人物：$id，中景，简洁粗黑�
 5. **抽 6 帧**：随机抽 6 帧拼图，每帧都能说出"这句在讲什么"吗？
 
 
+### 7.6 自评五维（给自己打分，别自我感觉良好）
+
+跑完片按这五项打分，**任一项 < 60 就要回炉**：
+
+| 维度 | 及格线 | 怎么量 | EP02 v4 实测 |
+|---|---|---|---|
+| 结构 | panel 覆盖 **≥ 60%** 时长 | 读 `film.json` 求和 | **43%**（51s/117s）→ 55 分 |
+| 素材 | 每屏独立底板，人物宽 ≤ 45% | 目测 + 抽帧 | 有 12 张 air，人物仍占 ~50% → 75 分 |
+| 元素 | label ≤1/屏；同屏 x 跨 ≥2 区域 | 脚本统计 | **x 只有 74/76，label 占 40%** → 40 分 |
+| 节奏 | 整屏切换中位 2.6–3.0s | 统计 start 差 | 2.44s（偏密）→ 50 分 |
+| 声音 | 5.0–5.5 字秒，0 异常 | `check.py` | 5.36 / 0 异常 → 95 分 |
+| **整体** | | | **60 分** |
+
+一段统计脚本（复制即用）：
+
+```python
+import json
+d = json.load(open(r'lbr-promo/src/data/film.json', encoding='utf-8'))
+ps = d['panels']
+els = [e for p in ps for e in p['elements']]
+cov = sum(p['end'] - p['start'] for p in ps)
+print(f"panel {len(ps)} 屏 / {sum(p['count'] for p in ps)} 句 / 覆盖 {cov/d['totalSeconds']*100:.0f}%")
+print("x:", sorted({e.get('x') for e in els}))
+print("label 占比:", round(sum(1 for e in els if e['kind'] == 'label') / max(1, len(els)) * 100), "%")
+cuts = sorted([l['start'] for l in d['lines'] if not l.get('panel')] + [p['start'] for p in ps])
+import statistics as st
+print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]), 2), "s")
+```
+
 ---
 
 ## 8. 踩过的坑（故障对照）
@@ -305,12 +470,33 @@ $base="扁平矢量卡通插画，同一个人物：$id，中景，简洁粗黑�
 | 一张图贴了半集 | 没登记复用 | 建 `assets.json`，`used_in` ≥2 就排除 |
 | 卡通人物不像一个人 | 换 provider / 换 seed / 词太虚 | 固定 `wanx2.1-t2i-turbo` + `--seed 20261124` + 身份串 |
 | 检索出来的图全不对 | cn.bing 对分镜描述命中极低 | 只当捡便宜，命中率 <30% 直接转 AI 生成 |
+| 渲染报 404 `textures/lib/xxx.jpg` | 图在 `slides/` 没进 `lib/` | 建库时按 `library.json` 的 `file` 名复制一份到 `lib/` |
+| 改了新稿却渲染出旧片 | `run.py build xx` 漏第 3 参数，用了 config 里的 `project.script` | 永远写全：`build xx scripts/script-xx.json` |
+| 真峰值反而变正 | `alimiter` 默认 `level` 会自动拉高电平 | `alimiter=limit=0.79:level=disabled:attack=5:release=60` |
+| panel 打印 0 屏 | `panel` 写成字符串但第一句没给 `bg` | 首句必须 `{"panel":{"id":"p1","bg":"..."}}`，后续才能写 `"p1"` |
+| PowerShell 里 python 报 `NameError` | here-string 吃掉了代码里的引号 | 写临时 `.py` 再执行，别用 `@"..."@` 包 Python |
 
 ---
 
 ## 9. 现状
 
-- EP01：`out\EP01-变帅5件事-v6.mp4`（103.1s）。
-- EP02：`out\EP02-你条件不差为什么一直单着.mp4`（117.5s，卡通 39%）。
-- 卡型全部跑通：`out\cardtest-final.mp4`、`out\slides-final.mp4`。
-- **待办**：① 把卡通占比从 39% 提到 50%+（补 5–6 个场景图）② 建 `pipeline\assets.json` + `tools\assets.py`（登记/查重/统计次数）③ 把 `stock.py` 的 preview 流程纳入出片 SOP ④ `teacher` 剪影换 shotcraft `brand-ink-open` ⑤ 凯哥剩余 49 条作品待采集（13/62）。
+**已完成**
+
+- 引擎：`build_film.py` 支持 `panel`（一屏多句 + 元素累加）；`Panel.tsx` 7 种元素；
+  `DataFilm.tsx` 卡片层与 panel 层共存；`Enter` 全片 1.028 慢推。
+- 素材：12 张 `-air` 留白底板（sofa/noodle/door/bed/metro/cafe/office/gym/street/wardrobe/mirror/night）；
+  11 张旧风格卡通（`slides/u*b`）；6 张实拍（`textures/bs/*`）；`library.json` 36 条清单。
+- 工具：`run.py`（plan/voice/align/build/render/mix/check/all）、`check.py`（11 项硬/软分级）、
+  `preflight.py`（依赖自检 + `--install`）、`img.py`（三 provider + `--seed`）、
+  `stock.py`（bing/commons/openverse/pexels + preview）、`assets.py`（list/check/add）、`build_lib.py`（缺口→批量生成）。
+- 成片：EP01 v6 103.1s；EP02 v3 117.5s（卡通 39%）；EP02 panel 版 117.5s（panel 覆盖 43%，自评 60 分）。
+  演示：`cardtest-final.mp4`、`slides-final.mp4`、`panel-final.mp4`。
+- 仓库：<https://github.com/aiamkey/bs-video-pipeline>（MIT）。
+
+**下一步（按优先级）**
+
+1. **元素排布**：按 §5.6 三规则重排 EP02 的 25 个元素（禁一列 / label≤1 / 可压人物）——不花 API 时间，收益最大。
+2. **扩覆盖**：把剩余 30 句里相邻的 `slides` 并屏，panel 覆盖 43% → 65%。
+3. **A/B/A 插入**：主屏中途插 0.5–1.0s 反应图（凯哥 283s 的做法），目前完全没有。
+4. `teacher` 剪影换 shotcraft `brand-ink-open`；补 `wrong`/`anatomy` 实拍素材。
+5. 凯哥剩余 49 条作品待采集（13/62）。
