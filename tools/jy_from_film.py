@@ -206,9 +206,11 @@ def build_spec(film: dict, name: str, with_elements: bool = True) -> dict:
         for i in sorted(lanes):
             tracks.append({"type": "text", "name": f"元素{i + 1}", "items": lanes[i]})
 
-    # 3) 字幕（逐句，凯哥式白字黑边）
+    # 3) 字幕（逐句，凯哥式白字黑边）；sub=false 的卡片句不出字幕（卡片大字已等同这句）
     sub_items = []
     for ln in film.get("lines") or []:
+        if ln.get("sub") is False:
+            continue
         text = (ln.get("text") or "").strip()
         if not text:
             continue
