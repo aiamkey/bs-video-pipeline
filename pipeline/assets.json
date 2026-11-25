@@ -1,0 +1,17 @@
+{
+ "_note": "素材登记表。一行一张图：id 唯一；scene 是场景；tags 是这张图能代表的语义（用于'对上'三问）；used_in 由 tools/assets.py 从 film.json 自动统计，不用手填。",
+ "_style": "u* = 新风格（wanx2.1-t2i-turbo + seed 20261124，同一个人）；s*/t* = 旧风格，不与 u* 混用",
+ "assets": [
+  {"id": "mirror-01", "scene": "浴室镜前", "tags": ["皱眉", "看镜子", "不满意"], "file": "textures/slides/u3b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "mirror-02", "scene": "浴室镜前", "tags": ["整理衣领", "抬头", "准备出门"], "file": "textures/slides/u4b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "metro-01", "scene": "地铁车厢", "tags": ["抓扶手", "低头看手机", "塌肩"], "file": "textures/slides/u5b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "metro-02", "scene": "地铁车厢", "tags": ["站直", "看向前方", "肩膀打开"], "file": "textures/slides/u6b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "noodle-01", "scene": "小面馆", "tags": ["一个人吃面", "低头", "将就"], "file": "textures/slides/u7b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "noodle-02", "scene": "小面馆", "tags": ["放下筷子", "抬头看窗外", "想事"], "file": "textures/slides/u8b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "desk-01", "scene": "电脑前", "tags": ["加班", "揉眼睛", "蓝光"], "file": "textures/slides/u11b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "door-01", "scene": "家门口", "tags": ["扶门把手", "要出门", "犹豫"], "file": "textures/slides/u12b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "sofa-01", "scene": "客厅沙发", "tags": ["瘫坐", "盯手机", "等回复"], "file": "textures/slides/u13b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "sofa-02", "scene": "客厅沙发", "tags": ["仰头叹气", "手机扣腿", "放弃"], "file": "textures/slides/u14b.jpg", "source": "ai:wanx seed20261124", "used_in": []},
+  {"id": "night-01", "scene": "深夜卧室", "tags": ["躺着刷手机", "屏幕照脸", "睡不着"], "file": "textures/slides/u15b.jpg", "source": "ai:wanx seed20261124", "used_in": []}
+ ]
+}
