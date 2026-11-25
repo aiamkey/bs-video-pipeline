@@ -67,11 +67,18 @@ check    文件大小 静止阈值 采样帧率
 | `pipeline/README.md` | 怎么用、改一个小点改哪里 |
 | `pipeline/SPEC.md` | 方法论 + 文稿/动画/素材规格 |
 | `pipeline/ANIMATION.md` | **动画怎么长**（六动作 + 转场 + 五步循环 + 卡通幻灯片） |
-| `scripts/script-*.json` | 文稿（每句带 card） |
-| `src/bs/Cards.tsx` | 卡型组件 |
-| `src/bs/DataFilm.tsx` | 渲染入口（读 `src/data/film.json`） |
-| `src/data/film.json` | 生成物：一句一镜 + 时间轴 |
-| `tools/img.py` | 生图（openai / dashscope / ark 三规范） |
+| `pipeline/library.json` | 素材库清单（场景 × 状态，`have` / `missing`） |
+| `pipeline/assets.json` | 已入素材登记（`id / scene / file / used_in`） |
+| `pipeline/CARTOON.md` | 卡通素材规格（数量 / 来源 / 衔接 / 留白） |
+| `scripts/script-*.json` | 文稿（每句带 card，或 panel + el） |
+| `src/bs/Cards.tsx` | 卡型组件（14 种卡片） |
+| `src/bs/Panel.tsx` | **panel 层**（底板 + 7 种元素逐句弹入） |
+| `src/bs/DataFilm.tsx` | 渲染入口（读 `film.json`，卡片层 + panel 层） |
+| `src/data/film.json` | 生成物：lines + panels + 时间轴 |
+| `tools/img.py` | 生图（openai / dashscope / ark + `--seed`） |
+| `tools/stock.py` | 图库检索（bing / commons / openverse / pexels） |
+| `tools/assets.py` | 素材登记与复用检查（list / check / add） |
+| `tools/build_lib.py` | 按 library.json 补缺口（`--dry-run` / `--only`） |
 | `tools/cosy_chapter.py` | 按章配音 |
 | `tools/align_v2.py` | whisper 词级对齐 → timeline |
 
@@ -133,6 +140,8 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"          # 必设，否则 requests 走
 每句可指定转场：`"transition": "cut|fade|slideL|slideR|zoom|slam"`，不写默认 `fade`。
 `slides` 字段：`frames[]` `hold`(秒/张) `text` `push` `fit` `paper` `captions[]`。
 
+> `panel` **不是卡型**，是 `lines[].panel` 字段（见 §5.6）。同一屏的句子不出卡片，只出字幕 + 元素。
+
 ---
 
 ## 5. 动画（只讲方法，实现交工具）
@@ -142,7 +151,7 @@ $env:NO_PROXY = "dashscope.aliyuncs.com"          # 必设，否则 requests 走
 1. 单镜 2.5–3.0s，最长 4.0s；连续静止 ≤ 3s。
 2. 入场起点透明度用 **0.15**，不要 0（0 会在切点闪白）。
 3. 转场 85% 是硬切；fade 只用在章节之间和"错误→原理"那一步。
-4. 一屏 ≤ 3 个元素；大字卡每行 ≤ 9 字，只标红 1–2 处。
+4. 一屏 ≤ 3 个元素（panel 屏内元素另算，见 §5.6「排布三规则」）；大字卡每行 ≤ 9 字，只标红 1–2 处。
 
 卡通素材**不是动画，是图**：一张停 1.2–2.0s，硬切翻页，每张 1.000→1.035 微推（顺带把静止占比压到 0）。
 
