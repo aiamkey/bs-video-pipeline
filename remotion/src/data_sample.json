@@ -1,0 +1,741 @@
+{
+ "title": "你条件不差，为什么一直单着",
+ "fps": 30,
+ "watermark": "",
+ "voice": "audio/ep02.wav",
+ "totalSeconds": 117.377,
+ "sections": [
+  {
+   "label": "序",
+   "start": 0.0,
+   "end": 13.24
+  },
+  {
+   "label": "太客气",
+   "start": 13.48,
+   "end": 35.34
+  },
+  {
+   "label": "生活入口",
+   "start": 35.52,
+   "end": 57.84
+  },
+  {
+   "label": "下一步",
+   "start": 58.06,
+   "end": 78.4
+  },
+  {
+   "label": "一个月",
+   "start": 78.68,
+   "end": 102.24
+  },
+  {
+   "label": "收尾",
+   "start": 102.5,
+   "end": 116.9
+  }
+ ],
+ "lines": [
+  {
+   "text": "兄弟们，先说个扎心的。",
+   "start": 0.0,
+   "end": 1.44,
+   "card": {
+    "type": "copy",
+    "text": "兄弟们，|先说个扎心的",
+    "size": 100,
+    "dark": true,
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "你条件不差，为什么一直单着？",
+   "start": 1.6,
+   "end": 3.44,
+   "card": {
+    "type": "copy",
+    "text": "条件是够的，|就是一直单着",
+    "size": 84,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "我见过太多这样的兄弟，一米八，工作稳定，就是单着。",
+   "start": 3.66,
+   "end": 7.6,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u13b.jpg",
+     "textures/slides/u14b.jpg"
+    ],
+    "hold": 1.3,
+    "text": "一米八，工作稳定，|就是单着",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "不是你长得不行。",
+   "start": 7.84,
+   "end": 8.75,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u3b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "不是你长得不行",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "是你身上有三个东西，把女生劝退了。",
+   "start": 8.9,
+   "end": 11.66,
+   "card": {
+    "type": "board",
+    "title": "三个劝退点",
+    "no": "01",
+    "items": [
+     "太客气",
+     "生活没入口",
+     "不敢给下一步"
+    ],
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "两分钟，我给你说透。",
+   "start": 11.88,
+   "end": 13.24,
+   "card": {
+    "type": "copy",
+    "text": "两分钟，|说透",
+    "size": 92,
+    "dark": true,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "第一个，你太客气了。",
+   "start": 13.48,
+   "end": 14.92,
+   "card": {
+    "type": "section",
+    "no": "01",
+    "title": "太客气",
+    "sub": "TOO POLITE",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "她一不回消息，你就开始想是不是说错了。",
+   "start": 15.12,
+   "end": 17.72,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u15b.jpg"
+    ],
+    "hold": 2.5,
+    "text": "她一没回，|你先慌了",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "她随口一句在忙，你能等她三个小时。",
+   "start": 18.08,
+   "end": 20.38,
+   "card": {
+    "type": "stat",
+    "value": "3",
+    "unit": "小时",
+    "label": "她一句「在忙」，你就等这么久",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你以为这叫真诚。",
+   "start": 20.58,
+   "end": 21.58,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u4b.jpg"
+    ],
+    "hold": 2.2,
+    "text": "你以为这叫真诚",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "在女生眼里，这叫没有生活。",
+   "start": 21.76,
+   "end": 23.76,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u14b.jpg"
+    ],
+    "hold": 2.3,
+    "text": "这叫没有生活",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你把她当回事，她不把你当回事。",
+   "start": 23.96,
+   "end": 25.78,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u5b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "你把她当回事",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "这不是她坏，是你给的太多了。",
+   "start": 25.96,
+   "end": 28.08,
+   "card": {
+    "type": "copy",
+    "text": "不是她坏，|是你给太多",
+    "size": 84,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "人只会珍惜需要争取的东西。",
+   "start": 28.3,
+   "end": 30.38,
+   "card": {
+    "type": "copy",
+    "text": "人只会珍惜|要争取的东西",
+    "size": 80,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你随叫随到，她凭什么珍惜。",
+   "start": 30.62,
+   "end": 32.56,
+   "card": {
+    "type": "copy",
+    "text": "你随叫随到，|她凭什么珍惜",
+    "size": 78,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "这不是让你装冷。",
+   "start": 32.8,
+   "end": 33.82,
+   "card": {
+    "type": "no-list",
+    "title": "不是让你",
+    "items": [
+     "装冷",
+     "玩消失",
+     "故意晚回三天"
+    ],
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "是你得先有自己的事。",
+   "start": 34.04,
+   "end": 35.34,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u12b.jpg"
+    ],
+    "hold": 2.3,
+    "text": "你得先有自己的事",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "第二个，你的生活没有入口。",
+   "start": 35.52,
+   "end": 37.42,
+   "card": {
+    "type": "section",
+    "no": "02",
+    "title": "生活没入口",
+    "sub": "NO ENTRY",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "问你周末干嘛，你说在家躺着。",
+   "start": 37.64,
+   "end": 39.8,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u13b.jpg",
+     "textures/slides/u15b.jpg"
+    ],
+    "hold": 1.3,
+    "text": "周末？在家躺着",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "问你有什么爱好，你说打游戏。",
+   "start": 40.02,
+   "end": 41.88,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u12b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "问你爱好，你说打游戏",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "这不是错。",
+   "start": 42.08,
+   "end": 42.64,
+   "card": {
+    "type": "copy",
+    "text": "这不算错",
+    "size": 96,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "但女生听到的是，加入你的生活没什么可期待的。",
+   "start": 42.9,
+   "end": 46.3,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u13b.jpg"
+    ],
+    "hold": 2.5,
+    "text": "没有什么可期待的",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你的一天里，没有一件值得讲的事。",
+   "start": 46.48,
+   "end": 48.62,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u11b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "没有一件值得讲的事",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "她要的不是你多有钱。",
+   "start": 48.8,
+   "end": 50.06,
+   "card": {
+    "type": "copy",
+    "text": "她要的不是钱",
+    "size": 92,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "是你能不能带她去一个她没去过的地方。",
+   "start": 50.32,
+   "end": 53.44,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u8b.jpg"
+    ],
+    "hold": 2.3,
+    "text": "带她去个没去过的地方",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "哪怕只是城郊一家面馆。",
+   "start": 53.56,
+   "end": 55.36,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u7b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "哪怕只是城郊一家面馆",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "女生不是要你有趣，是要你有内容。",
+   "start": 55.56,
+   "end": 57.84,
+   "card": {
+    "type": "copy",
+    "text": "不是要你有趣，|是要你有内容",
+    "size": 72,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "第三个，你不敢给下一步。",
+   "start": 58.06,
+   "end": 59.72,
+   "card": {
+    "type": "section",
+    "no": "03",
+    "title": "不敢给下一步",
+    "sub": "NO NEXT STEP",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "聊了两周，还在问在干嘛。",
+   "start": 60.0,
+   "end": 61.96,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u5b.jpg"
+    ],
+    "hold": 2.5,
+    "text": "两周了，还在问在干嘛",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "她等你约，你等她暗示。",
+   "start": 62.14,
+   "end": 63.76,
+   "card": {
+    "type": "copy",
+    "text": "她等你约，|你等她暗示",
+    "size": 84,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "两个人一起耗。",
+   "start": 63.94,
+   "end": 64.8,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u5b.jpg"
+    ],
+    "hold": 2.2,
+    "text": "两个人一起耗",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "女生最烦的不是被拒绝。",
+   "start": 65.1,
+   "end": 66.76,
+   "card": {
+    "type": "wrong",
+    "text": "最烦的不是被拒绝",
+    "sub": "拒绝至少是个答案",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "是她根本不知道你到底想干嘛。",
+   "start": 66.98,
+   "end": 68.82,
+   "card": {
+    "type": "copy",
+    "text": "「这人到底|想干嘛」",
+    "size": 82,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你怕被拒绝，所以一直不给答案。",
+   "start": 69.02,
+   "end": 71.14,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u14b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "你怕被拒绝",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "但拖着的成本，比被拒绝高得多。",
+   "start": 71.4,
+   "end": 73.76,
+   "card": {
+    "type": "copy",
+    "text": "拖着的成本，|比被拒绝高得多",
+    "size": 74,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你只要给一个具体的时间和地点。",
+   "start": 74.0,
+   "end": 75.96,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u12b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "给一个具体的时间和地点",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "成不成是她的事。",
+   "start": 76.16,
+   "end": 77.14,
+   "card": {
+    "type": "copy",
+    "text": "成不成，|是她的事",
+    "size": 86,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "给不给，是你的事。",
+   "start": 77.32,
+   "end": 78.4,
+   "card": {
+    "type": "copy",
+    "text": "给不给，|是你的事",
+    "size": 86,
+    "dark": true,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "那怎么办？一个月，三件事。",
+   "start": 78.68,
+   "end": 80.76,
+   "card": {
+    "type": "board",
+    "title": "一个月，三件事",
+    "no": "04",
+    "items": [
+     "回消息慢一点",
+     "每周做一件能说出口的事",
+     "满一周就直接约"
+    ],
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "第一，把回消息的时间拉长。",
+   "start": 80.98,
+   "end": 83.08,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u15b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "把回消息的时间拉长",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "不是冷落，是你真的在忙。",
+   "start": 83.32,
+   "end": 85.1,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u11b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "不是冷落，是真在忙",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "第二，每周做一件能说出口的事。",
+   "start": 85.32,
+   "end": 87.8,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u7b.jpg"
+    ],
+    "hold": 2.4,
+    "text": "每周做一件能说出口的事",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "看个展，爬个山，学一道菜。",
+   "start": 87.96,
+   "end": 89.98,
+   "card": {
+    "type": "list",
+    "title": "能说出口的事",
+    "items": [
+     "看个展",
+     "爬个山",
+     "学一道菜"
+    ],
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "一个月后你会发现，消息不用秒回，关系也不会断。",
+   "start": 90.2,
+   "end": 93.5,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u4b.jpg"
+    ],
+    "hold": 2.6,
+    "text": "秒回，不是必需品",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "第三，聊天满一周，直接约。",
+   "start": 93.72,
+   "end": 95.86,
+   "card": {
+    "type": "copy",
+    "text": "03　满一周，|直接约",
+    "size": 80,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "别说有空吗。",
+   "start": 96.12,
+   "end": 96.98,
+   "card": {
+    "type": "wrong",
+    "text": "别说「有空吗」",
+    "sub": "这句话等于把选择权全交出去",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "要说，周六下午三点，去不去。",
+   "start": 97.22,
+   "end": 99.42,
+   "card": {
+    "type": "copy",
+    "text": "周六下午三点，|去不去",
+    "size": 80,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "约不出来的，早点知道，比耗三个月强。",
+   "start": 99.7,
+   "end": 102.24,
+   "card": {
+    "type": "copy",
+    "text": "早点知道，|比耗三个月强",
+    "size": 76,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "记住，你不是没人要。",
+   "start": 102.5,
+   "end": 104.18,
+   "card": {
+    "type": "copy",
+    "text": "你不是没人要",
+    "size": 92,
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "你是把自己放在了一个没人看得见的位置。",
+   "start": 104.36,
+   "end": 106.92,
+   "card": {
+    "type": "copy",
+    "text": "你把自己放在了|没人看得见的位置",
+    "size": 68,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "位置挪一下，人就变了。",
+   "start": 107.12,
+   "end": 108.64,
+   "card": {
+    "type": "slides",
+    "frames": [
+     "textures/slides/u6b.jpg"
+    ],
+    "hold": 2.6,
+    "text": "位置挪一下，人就变了",
+    "transition": "fade"
+   }
+  },
+  {
+   "text": "你不用变成另一个人。",
+   "start": 108.9,
+   "end": 109.9,
+   "card": {
+    "type": "copy",
+    "text": "你不用变成|另一个人",
+    "size": 84,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "你只要把那三个东西拿掉。",
+   "start": 110.12,
+   "end": 111.54,
+   "card": {
+    "type": "copy",
+    "text": "把那三个东西|拿掉",
+    "size": 86,
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "一个月后再照镜子，你会认不出那个低头的自己。",
+   "start": 111.76,
+   "end": 114.81,
+   "card": {
+    "type": "stat",
+    "value": "1",
+    "unit": "个月",
+    "label": "再照镜子，认不出那个低头的自己",
+    "transition": "cut"
+   }
+  },
+  {
+   "text": "从今天开始，把位置挪一下。",
+   "start": 114.96,
+   "end": 116.9,
+   "card": {
+    "type": "outro",
+    "text": "把位置挪一下",
+    "accent": "START TODAY",
+    "kicker": "01",
+    "transition": "fade"
+   }
+  }
+ ]
+}

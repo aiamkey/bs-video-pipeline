@@ -1,0 +1,22 @@
+# 依赖与产物
+node_modules/
+remotion/node_modules/
+remotion/out/
+out/
+*.mp4
+*.wav
+*.mp3
+
+# 私有配置（含 key / 绝对路径）
+pipeline/config.local.json
+config.local.json
+.env
+
+# 生成物
+remotion/src/data/film.json
+remotion/.tmp-remotion/
+remotion/.remotion/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

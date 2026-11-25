@@ -1,0 +1,135 @@
+{
+  "_说明": "唯一真源。改这里 → 跑 pipeline/run.py <阶段> <EP>。不要在别处改数字。",
+  "project": {
+    "name": "男生变帅",
+    "ep": "voice-bs",
+    "script": "scripts/script-bs.json",
+    "composition": "DataFilm"
+  },
+  "paths": {
+    "python": "python",
+    "ffmpeg": "ffmpeg",
+    "root": ".",
+    "promo": "remotion"
+  },
+  "text": {
+    "sentence_min_chars": 8,
+    "sentence_max_chars": 18,
+    "auto_bounds": [
+      60,
+      1200
+    ],
+    "total_chars": [
+      480,
+      560
+    ],
+    "comma_period_ratio": [
+      2.5,
+      3.5
+    ],
+    "you_per_sentence": 0.5,
+    "bro_per_100_chars": 0.4,
+    "question_total": [
+      3,
+      5
+    ],
+    "banned": [
+      "让我们一起",
+      "众所周知",
+      "在这个快节奏的时代",
+      "提升气质",
+      "塑造形象",
+      "增强自信"
+    ]
+  },
+  "voice": {
+    "provider": "dashscope-cosy",
+    "voice": "longcheng_v2",
+    "rate": 1.08,
+    "gap_between_chapters": 0.8,
+    "silence_keep": 0.3,
+    "target_cps": [
+      5.0,
+      5.5
+    ],
+    "lufs": -16.0,
+    "true_peak": -2.0,
+    "lra": 11
+  },
+  "video": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "crf": 19,
+    "_duration说明": "mode=auto 时长随稿子走、不限目标；mode=target 按 target_sec±tolerance_pct 卡死，run.py plan 会反推需要的字数/语速。",
+    "duration": {
+      "mode": "auto",
+      "target_sec": 100,
+      "tolerance_pct": 8,
+      "auto_bounds": [
+        30,
+        600
+      ]
+    },
+    "shot_median_sec": [
+      2.5,
+      3.0
+    ],
+    "shot_max_sec": 4.0,
+    "still_max_sec": 3.0,
+    "subtitle": {
+      "size": 38,
+      "bottom_offset": 100,
+      "stroke": 5
+    },
+    "progress": {
+      "segments": 7,
+      "front_px": 3,
+      "line_px": 3
+    },
+    "watermark": ""
+  },
+  "card": {
+    "bg": "#F6F4EF",
+    "paper": "#FFFDF8",
+    "ink": "#111111",
+    "muted": "#6B6B6B",
+    "accent": "#C8342B",
+    "green": "#1B4A3C",
+    "title_size": 104,
+    "copy_size": 88,
+    "sub_size": 40,
+    "line_max_chars": 9,
+    "max_lines": 2,
+    "red_max_words": 2,
+    "elem_max_per_card": 3,
+    "enter_ms": [
+      350,
+      500
+    ],
+    "stagger_ms": [
+      80,
+      120
+    ],
+    "opacity_start": 0.15,
+    "ease": [
+      "ease-out",
+      "ease-out-back"
+    ]
+  },
+  "check": {
+    "min_filesize_mb": 3,
+    "still_diff_threshold": 1.0,
+    "sample_fps": 2
+  },
+  "images": {
+    "_说明": "生图用谁的 key 由使用者决定。provider 可选 openai / dashscope / ark；openai 兼容任意中转站（one-api、new-api、ohmygpt 等），填 base_url 即可。",
+    "provider": "dashscope",
+    "model": "wanx2.1-t2i-turbo",
+    "size": "1280x720",
+    "base_url": "",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "api_key": "",
+    "timeout": 180
+  }
+}

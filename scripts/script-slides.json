@@ -1,0 +1,42 @@
+{
+  "title": "卡通风 · 幻灯片演示",
+  "fps": 30,
+  "watermark": "",
+  "chapters": [
+    {
+      "label": "演示",
+      "lines": [
+        {
+          "text": "你每天就是这样，塌着背，低着头。",
+          "card": {
+            "type": "slides",
+            "frames": ["textures/slides/s1.jpg", "textures/slides/s3.jpg"],
+            "hold": 1.5,
+            "text": "塌着背，低着头",
+            "transition": "cut"
+          }
+        },
+        {
+          "text": "照镜子，也只是随手扒拉两下。",
+          "card": {
+            "type": "slides",
+            "frames": ["textures/slides/s2.jpg"],
+            "hold": 2.6,
+            "text": "随手扒拉两下",
+            "transition": "cut"
+          }
+        },
+        {
+          "text": "站起来，把肩打开，人就不一样了。",
+          "card": {
+            "type": "slides",
+            "frames": ["textures/slides/s4.jpg"],
+            "hold": 2.8,
+            "text": "把肩打开",
+            "transition": "fade"
+          }
+        }
+      ]
+    }
+  ]
+}

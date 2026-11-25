@@ -1,0 +1,8 @@
+# 依赖
+requests>=2.31
+numpy>=1.24
+dashscope>=1.20        # 阿里云百炼：cosyvoice-v2 配音 / wanx 生图 / qwen3-vl 读片
+
+# 系统级（不在 pip 里，需自行安装）
+# - Node.js 18/20/22（Remotion 需要）
+# - ffmpeg 6+（混音、抽帧、测静止段）
