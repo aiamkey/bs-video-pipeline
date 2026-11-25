@@ -538,6 +538,9 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
 & $py tools\jy_env.py --write-env
 & $py tools\jy_env.py --check
 
+# 卡片静帧（把 copy/section/board/stat/slides/outro 这些非 panel 句垫满，否则一半黑场）
+& $py tools\jy_cards.py --render
+
 # film.json → 剪映工程
 & $py tools\jy_from_film.py --spec-out qa2\jy-spec-ep02.json
 & $py tools\jy_check.py "E:\剪映5.9版本免激活(1)\草稿\JianyingPro Drafts\EP02_剪映工程"
@@ -549,8 +552,14 @@ print("切换中位:", round(st.median([b - a for a, b in zip(cuts, cuts[1:])]),
 2. 装饰（动画/转场/滤镜/蒙版/淡入）必须写在 `add_segment()` **之前**，否则素材没登记、只留悬空引用。
 3. 剪映**同一轨道片段不能重叠**；元素要"停留到屏尾"就按 panel 内序号分轨。
 
-ep02 实测：轨 0 底板 11 段（scale 1.0→1.035）/ 轨 1–3 元素 24 个 / 轨 4 字幕 55 段 / 轨 5 配音，
-`new_version=110.0.0`、`issues=[]`。
+另外三处**最容易出"看着不对但说不清"的瑕疵**（`JIANYING.md` §10 有实测证据）：
+
+4. **只映射 panel 会有一半黑场**。EP02 实测 panel 只占 51s/117s，其余 66s 全黑 → 必须跑 `jy_cards.py` 垫卡片静帧。
+5. **剪映 y 轴向上为正**，`top:26%` 要写 `transform_y=+0.48` 不是 −0.48；写反了整层元素垂直镜像（元素全跑到下半屏）。
+6. **剪映没有定宽文本框**，只有 `max_line_width`（默认 0.82）；不按 `el.w/1280` 折算，一句话会横贯全屏。
+
+ep02 实测（修完）：视频轨 41 段（底板 11 + 卡片 30）/ 元素 24 个 / 字幕 55 段 / 配音 1 段，
+`new_version=110.0.0`、**黑场 0.00s**、`issues=[]`。验收看 `jy_check` 的「画面覆盖」段落。
 
 ---
 

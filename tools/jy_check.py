@@ -76,6 +76,26 @@ def main(argv):
             kf = " ".join(s["keyframes"]) or "-"
             print(f"   {s['start_s']:6.2f}s +{s['dur_s']:5.2f}s  kf:{kf}  refs:{len(s['extra'])}")
 
+    # 黑场（视频层覆盖）——"打开就是黑的"比任何关键帧问题都致命
+    total = (doc.get("duration") or 0) / 1_000_000
+    segs = sorted((s["start_s"], s["start_s"] + s["dur_s"])
+                  for t in out if t["type"] == "video" for s in t["segments"])
+    gaps, t0 = [], 0.0
+    for a, b in segs:
+        if a - t0 > 0.06:
+            gaps.append((round(t0, 2), round(a, 2), round(a - t0, 2)))
+        t0 = max(t0, b)
+    if total - t0 > 0.06:
+        gaps.append((round(t0, 2), round(total, 2), round(total - t0, 2)))
+    gt = sum(g[2] for g in gaps)
+    print(f"\n画面覆盖：视频段 {len(segs)} 个 / 全片 {total:.2f}s")
+    if gaps:
+        print(f"  ⚠ 黑场 {len(gaps)} 处 合计 {gt:.2f}s（{100*gt/max(total,0.01):.1f}%）")
+        for g in gaps[:10]:
+            print(f"     {g[0]:6.2f}s → {g[1]:6.2f}s  ({g[2]:.2f}s)")
+    else:
+        print("  ✓ 无黑场（视频层首尾相接）")
+
     mats = doc.get("materials") or {}
     print("\n素材统计：")
     for k, v in mats.items():
