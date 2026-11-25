@@ -1,6 +1,6 @@
-﻿---
+---
 name: bs-video-pipeline
-description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、排查字幕不同步/闪白/静止过长/元素排布像PPT/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
+description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完，渲染前先用 audit.py 做排布体检。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、把 film.json 转成剪映工程、排查字幕不同步/闪白/静止过长/元素排布像PPT/黑场/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
 ---
 
 # 男生变帅号 · 视频流水线
