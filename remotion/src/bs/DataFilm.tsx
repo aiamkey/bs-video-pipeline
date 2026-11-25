@@ -28,9 +28,11 @@ import {
   AnnotateCard,
   SlidesCard,
 } from './Cards';
+import { PanelLayer, type PanelT } from './Panel';
 
 export const DATA_TOTAL = Math.round(film.totalSeconds * FPS);
 const sec = (s: number) => Math.round(s * FPS);
+const PANELS: PanelT[] = ((film as unknown as { panels?: PanelT[] }).panels ?? []) as PanelT[];
 
 type Line = (typeof film.lines)[number];
 type Card = NonNullable<Line['card']>;
@@ -219,7 +221,7 @@ const Enter: React.FC<{ kind?: string; dur: number; children: React.ReactNode }>
   );
 };
 
-export const DataFilm: React.FC = () => {
+const FilmCore: React.FC<{ subs?: boolean }> = ({ subs = true }) => {
   const frame = useCurrentFrame();
   const lines = film.lines;
   return (
@@ -227,7 +229,18 @@ export const DataFilm: React.FC = () => {
       <Audio src={staticFile(film.voice)} volume={1} />
       <Audio src={staticFile('audio/bgm/house-vibez.mp3')} volume={0.07} loop />
 
+      {PANELS.map((p, i) => {
+        const from = sec(p.start);
+        const dur = Math.max(4, sec(p.end) - from);
+        return (
+          <Sequence key={`panel-${i}`} from={from} durationInFrames={dur}>
+            <PanelLayer panel={p} />
+          </Sequence>
+        );
+      })}
+
       {lines.map((line, i) => {
+        if ((line as { panel?: string | null }).panel) return null; // 屏内句子只有字幕，不画卡片
         const from = sec(line.start);
         const next = i + 1 < lines.length ? sec(lines[i + 1].start) : DATA_TOTAL;
         const dur = Math.max(2, next - from);
@@ -240,7 +253,8 @@ export const DataFilm: React.FC = () => {
         );
       })}
 
-      {lines.map((line, i) => {
+      {subs && lines.map((line, i) => {
+        if ((line as { sub?: boolean }).sub === false) return null; // 卡片大字已等于这句，不再叠字幕
         const from = sec(line.start);
         const dur = Math.max(8, sec(line.end) - from);
         return (
@@ -261,3 +275,8 @@ export const DataFilm: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+export const DataFilm: React.FC = () => <FilmCore />;
+
+/** 无字幕版：给剪映导"卡片静帧"用（字幕交给剪映文字轨，避免烧死重复） */
+export const DataFilmNoSub: React.FC = () => <FilmCore subs={false} />;
