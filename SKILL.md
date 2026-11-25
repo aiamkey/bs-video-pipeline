@@ -12,6 +12,35 @@ description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋�
 
 ---
 
+## 0.0 三十秒速查
+
+```powershell
+$py = "E:\miniconda\envs\JupyterProject\python.exe"
+$env:NO_PROXY = "dashscope.aliyuncs.com"
+& $py lbr-promo\pipeline\run.py all ep02 scripts\script-ep02.json   # 一条片
+& $py lbr-promo\pipeline\check.py ep02                              # 11 项体检
+```
+
+三条不可违的铁律：
+
+1. **改参数只改 `pipeline/config.json`**，代码和文档不写死数字。
+2. **一屏 2–4 句**（panel），底板不动、元素逐句弹入；不是一句换一张图。
+3. **入场透明度用 0.15**，不要 0（0 会在切点闪白）；每张图 1.000→1.035 微推（治静止占比）。
+
+### 改了什么 → 重跑哪几步
+
+| 你改了 | 必须重跑 | 为什么 |
+|---|---|---|
+| 文案（`script-*.json` 的 `text`） | `align` → `build` → `render` → `mix` | 句子变了，时间轴全变 |
+| 卡片内容（`card` 字段） | `build` → `render` → `mix` | 只影响画面 |
+| panel 元素（`el` / `x` / `y`） | `build` → `render` → `mix` | 元素位置在读 film.json 时定 |
+| `config.voice.rate` / `voice` | `voice` → `align` → `build` → `render` → `mix` | 配音从头来 |
+| 字幕字号/位置（`config.video.subtitle`） | `render` → `mix` | 纯渲染层 |
+| 响度（`config.voice.lufs` / `true_peak`） | `mix` | 只混音 |
+| 卡型组件（`Cards.tsx` / `Panel.tsx`） | `render` → `mix` | TSX 变了要重编译 |
+
+---
+
 ## 0.5 依赖自检（新环境第一步）
 
 **先跑体检，别直接开跑。** 缺什么它会直接给安装命令：
@@ -71,7 +100,7 @@ check    文件大小 静止阈值 采样帧率
 | `pipeline/assets.json` | 已入素材登记（`id / scene / file / used_in`） |
 | `pipeline/CARTOON.md` | 卡通素材规格（数量 / 来源 / 衔接 / 留白） |
 | `scripts/script-*.json` | 文稿（每句带 card，或 panel + el） |
-| `src/bs/Cards.tsx` | 卡型组件（14 种卡片） |
+| `src/bs/Cards.tsx` | 卡型组件（18 种卡片） |
 | `src/bs/Panel.tsx` | **panel 层**（底板 + 7 种元素逐句弹入） |
 | `src/bs/DataFilm.tsx` | 渲染入口（读 `film.json`，卡片层 + panel 层） |
 | `src/data/film.json` | 生成物：lines + panels + 时间轴 |
