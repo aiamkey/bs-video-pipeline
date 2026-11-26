@@ -193,9 +193,9 @@ if not sfx:
     add("音效条数", "0（没跑 pipeline/sfx.py）", "每屏 ≥1 条，密度 ≤20 条/分钟",
         False, "WARN")
 else:
+    ok = per_panel >= 1.0 and density <= 20
     add("音效条数", f"{len(sfx)} 条 · {per_panel:.1f} 条/屏 · {density:.1f} 条/分钟",
-        "每屏 ≥1 条，密度 ≤20 条/分钟",
-        per_panel >= 1.0 and density <= 20, "WARN")
+        "每屏 ≥1 条，密度 ≤20 条/分钟", ok, "OK" if ok else "WARN")
     add("  └ 不铺 BGM", "只有点状音效", "凯哥原片无 BGM", True, "OK")
 
 # ---------- 输出 ----------

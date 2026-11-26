@@ -73,6 +73,22 @@ def collect() -> dict[str, list[str]]:
                 for f in card.get("frames") or []:
                     add(f, who)
 
+    # 1b) 图标：panel 元素里 kind=icon/arrow/dot 的，需要 textures/icons/<name>.png
+    for script in sorted(env.scripts().glob("script-*.json")):
+        try:
+            doc = json.loads(script.read_text(encoding="utf-8-sig"))
+        except ValueError:
+            continue
+        for ch in (doc.get("chapters") if isinstance(doc, dict) else []) or []:
+            for ln in ch.get("lines") or []:
+                el = ln.get("el") or {}
+                if not isinstance(el, dict):
+                    continue
+                kind = el.get("kind")
+                if kind not in ("icon", "arrow", "dot"):
+                    continue
+                add(f"icons/{el.get('name') or kind}.png", script.name)
+
     # 2) 素材清单
     for name in ("library.json", "assets.json"):
         f = env.root() / "pipeline" / name
@@ -127,6 +143,8 @@ def main() -> int:
                 print(f"\n  ✗ {d}/  缺 {len(names)} 个")
                 print("    " + " ".join(sorted(names)))
             print("\n怎么补（任选一种）：")
+            if any(rel.startswith("icons/") for rel in missing):
+                print("  0) 图标：python tools/mk_icons.py   （11 个 PNG 一次生成，形状在脚本里改）")
             print("  1) 生成：python tools/img.py \"<场景提示词>\" lbr-promo/public/textures/slides/u3b.jpg --seed 20261124")
             print("     —— 提示词模板见 pipeline/CARTOON.md，逐张按 library.json 的 scene/tags 写")
             print("  2) 已有图：直接拷进对应目录，文件名与稿子里写的一致即可")

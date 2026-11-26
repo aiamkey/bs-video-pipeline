@@ -53,6 +53,18 @@ def size_of(px: float) -> float:
     return round(float(px) / PX_TO_SIZE, 1)
 
 
+def _png_side(path: pathlib.Path) -> float:
+    """读 PNG 的 IHDR 宽度（不依赖 Pillow）。失败返回 0。"""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(24)
+    except OSError:
+        return 0.0
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
+        return 0.0
+    return float(int.from_bytes(head[16:20], "big"))
+
+
 def load(film_path: pathlib.Path) -> dict:
     return json.loads(film_path.read_text(encoding="utf-8"))
 
@@ -201,19 +213,24 @@ def build_spec(film: dict, name: str, with_elements: bool = True) -> dict:
                 if kind in ("icon", "arrow", "dot"):
                     png = pub / "textures" / "icons" / f"{el.get('name') or kind}.png"
                     if png.is_file():
-                        px = float(el.get("size") or 84)
+                        # Remotion 里 icon 画在 size 像素见方（默认 96、arrow 默认 220）
+                        px = float(el.get("size") or 96)
+                        side = _png_side(png) or 256.0
+                        # 剪映的 scale 相对素材原始像素（我们的素材都是成品尺寸贴图，
+                        # 底板 1280x720 在 scale 1.0 时正好铺满画布，所以 1.0 = 原始像素）
+                        # → 想要高 px 像素，scale = px / 图片边长
+                        sc = round(px / side, 4)
                         icons.append({
                             "path": str(png.resolve()),
                             "start": round(at, 3),
                             "duration": round(dur, 3),
-                            # 剪映把方形图按高度铺满画布 → 想要 px 像素，scale = px / 720
-                            "scale": round(px / 720.0, 4),
+                            "scale": sc,
                             "position": [pct(el.get("x", 70)), pct_y(el.get("y", 40))],
                             "keyframes": [
                                 {"prop": "alpha", "t": round(at, 3), "v": 0.0},
                                 {"prop": "alpha", "t": round(at + 0.24, 3), "v": 1.0},
-                                {"prop": "scale", "t": round(at, 3), "v": round(px / 720.0 * 1.15, 4)},
-                                {"prop": "scale", "t": round(at + 0.26, 3), "v": round(px / 720.0, 4)},
+                                {"prop": "scale", "t": round(at, 3), "v": round(sc * 1.15, 4)},
+                                {"prop": "scale", "t": round(at + 0.26, 3), "v": sc},
                             ],
                         })
                         continue

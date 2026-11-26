@@ -101,10 +101,14 @@ for ci, ch in enumerate(tl["chapters"]):
                     "count": 0,
                     "elements": [],
                 }
-            el = src_line.get("el")
-            if el:
+            # 一句可以出多个元素：els=[...]（同一句里错开 0.35s 依次弹入），或单个 el
+            els = src_line.get("els")
+            if not els and src_line.get("el"):
+                els = [src_line["el"]]
+            for k, el in enumerate(els or []):
                 e = dict(el)
-                e["at"] = round(max(0.0, line["start"] - cur["start"]), 3)
+                base = max(0.0, line["start"] - cur["start"])
+                e["at"] = round(base + k * 0.35, 3)
                 cur["elements"].append(e)
             cur["count"] += 1
         else:

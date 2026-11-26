@@ -21,6 +21,7 @@ import argparse
 import json
 import pathlib
 import subprocess
+import shutil
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -45,7 +46,9 @@ def render_nosub() -> None:
     tmp = PROMO / ".tmp-remotion"
     tmp.mkdir(exist_ok=True)
     env["TEMP"] = env["TMP"] = str(tmp)
-    cmd = ["npx", "remotion", "render", "src/index.ts", "DataFilmNoSub",
+    # Windows 上 npx 是 npx.cmd，直接写 "npx" 会 FileNotFoundError
+    npx = shutil.which("npx") or shutil.which("npx.cmd") or "npx.cmd"
+    cmd = [npx, "remotion", "render", "src/index.ts", "DataFilmNoSub",
            "out/ep02-nosub.mp4", "--concurrency=4", "--codec=h264", "--crf=20"]
     print("渲染无字幕版：", " ".join(cmd))
     subprocess.run(cmd, cwd=str(PROMO), env=env, check=True)
