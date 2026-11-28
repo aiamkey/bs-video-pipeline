@@ -83,7 +83,8 @@ def _text_item(text: str, s: float, e: float, *, size: float = SUB_SIZE,
     return it
 
 
-def build_jy_spec(spec: dict, name: str, with_elements: bool = True) -> dict:
+def build_jy_spec(spec: dict, name: str, with_elements: bool = True,
+                  transition: str = "", transition_dur: float = 0.2) -> dict:
     """通用 spec → jy_draft.build() 的输入 dict。"""
     meta = spec.get("meta") or {}
     total = float(meta.get("target_duration") or meta.get("src_duration") or 0)
@@ -112,6 +113,12 @@ def build_jy_spec(spec: dict, name: str, with_elements: bool = True) -> dict:
     for slot in sorted(lanes):
         items = lanes[slot]
         JF._fill_gaps(items, total)                       # 单轨吃小空档防黑闪
+        # 屏间转场（剪映内置名，如「上移」「叠化」「溶解」）：加在底板轨上，
+        # 末段没有下一段可转，跳过；时长单位是秒，jy_draft 会换成微秒。
+        if transition:
+            for it in items[:-1]:
+                it["transition"] = {"name": transition,
+                                    "duration": round(transition_dur, 3)}
         tracks.append({"type": "video", "name": f"底板_{slot}", "items": items})
     if tracks:
         JF._fill_across(tracks, total)                    # 跨轨交界补完
@@ -207,6 +214,9 @@ def main(argv):
     ap.add_argument("--no-elements", action="store_true", help="只出底板+字幕+配音")
     ap.add_argument("--spec-out", default="", help="把 jy spec 另存一份便于改")
     ap.add_argument("--dry-run", action="store_true", help="不建草稿、不依赖剪映目录、不联网")
+    ap.add_argument("--transition", default="",
+                    help="屏间转场名（剪映内置，如 上移 / 叠化 / 溶解 / 向上擦除）；空=不加")
+    ap.add_argument("--transition-dur", type=float, default=0.2, help="转场时长秒，默认 0.2")
     a = ap.parse_args(argv[1:])
 
     spec_path = pathlib.Path(a.spec).resolve()
@@ -215,7 +225,9 @@ def main(argv):
     meta = spec.get("meta") or {}
     name = a.name or meta.get("name") or spec_path.stem.replace(".spec", "")
 
-    jy_spec = build_jy_spec(spec, name, with_elements=not a.no_elements)
+    jy_spec = build_jy_spec(spec, name, with_elements=not a.no_elements,
+                            transition=a.transition,
+                            transition_dur=a.transition_dur)
 
     if a.spec_out:
         out = pathlib.Path(a.spec_out)

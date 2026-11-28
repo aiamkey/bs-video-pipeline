@@ -724,6 +724,7 @@ $PY = "E:\miniconda\envs\JupyterProject\python.exe"   # 见下方「解释器」
 & $PY tools\replica_shots.py --spec out\ref.spec.json                  # 每屏抽帧 → assets[]
 & $PY tools\replica.py validate --spec out\ref.spec.json               # 本地可判项体检
 & $PY tools\replica.py jianying --spec out\ref.spec.json --name 片名   # 出剪映草稿
+& $PY tools\jy_from_spec.py --spec out\ref.spec.json --name 片名_位移版 --transition 上移 --transition-dur 0.2  # 带屏间转场
 ```
 
 ### 实测（2026-11-28，两条不同片子）
