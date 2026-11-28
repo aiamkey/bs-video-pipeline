@@ -4,6 +4,8 @@
 
 对标抖音「凯哥恋爱说」的形态，但**方法论、参数、素材规格全部显式化**，不靠手感。
 
+也能反向用：给一条别人做好的**动画式参考片**，自动拆出结构、对齐时长、出可编辑剪映工程 —— 见「[复刻一条参考片](#复刻一条参考片反向用法)」。
+
 ---
 
 ## 30 秒上手
@@ -49,6 +51,33 @@ python pipeline/run.py all ep02 scripts/script-ep02.json
 
 ---
 
+## 复刻一条参考片（反向用法）
+
+手上有一条别人做的动画式视频（图文卡 / 聊天气泡 / 大字卡 / 文档页 / 卡通角色 / 进度导航），
+要照它的结构做一条同构的。**换片只换第一个参数，不改代码**：
+
+```bash
+python tools/replica.py auto "D:\ref\任意新片.mp4" --name 新片_自动复刻
+# 只拆结构不要草稿： 加 --no-jianying；只分析前 3 分钟：加 --dur 180
+```
+
+| 产物 | 位置 | 说明 |
+|---|---|---|
+| `spec.json` | `qa2/replica/out/<片名>.spec.json` | 结构事实：`meta` / `subs` / `scenes` / `sections` / `voice` |
+| `assets/` | 同上目录 | 每屏代表帧 `p000.jpg…` + `voice.wav`（原片音轨） |
+| 剪映草稿 | `…\JianyingPro Drafts\<name>\` | **图片轨 + 字幕轨 + 配音轨**，打开即可改 / 导出 |
+
+实测：547s 片 → 313 字幕 / 61 屏 / 6 章；180s 片 → 126 字幕 / 38 屏 / 3 章，`validate` 全 PASS（时长差 0.02–0.18s）。
+
+事实层（转写 / 切点 / 版式量测）全在本机跑，**不联网不花钱**。画面重画（GPT 出图替代表帧）与声音克隆（替原声）
+是可选增强，配置就位、尚未接线 —— 接上后只换 `scenes[].assets[].file` 与 `voice.wav`，**下游一个字不用改**。
+
+分步用法、四型判定规则、解释器对照与 6 条坑见 [`SKILL.md` §8.6](SKILL.md)；输入口径与 80% 验收见 [`pipeline/REPLICA.md`](pipeline/REPLICA.md)。
+
+> `qa2/`、`deliver/` 都是产物目录，不进 git（跑一次就重建）。
+
+---
+
 ## 依赖（像 pip 一样，缺了 preflight 会说）
 
 | 类别 | 需要 | 说明 |
@@ -83,6 +112,7 @@ pipeline/
   ANIMATION.md          动画与转场的"看起来该是什么样"
   CARTOON.md            卡通素材的数量、节拍与衔接六法
   JIANYING.md           film.json → 剪映工程（含明文降级、可迁移素材、美颜花字）
+  REPLICA.md            复刻需求规格定稿（输入口径 / 保真定义 / 80% 验收 / 交付物）
   jy_versions.json      剪映版本能力表（哪版验证过、new_version 该写多少）
 scripts/
   script-*.json         逐句文稿 + 每句的画面卡
@@ -96,6 +126,13 @@ tools/
   shot_stats.py         测镜头密度 / 静止占比
   jy_env.py / jy_draft.py / jy_from_film.py / jy_check.py / jy_localize.py / jy_beauty.py
                         film.json → 剪映工程（可选，见 JIANYING.md）
+  analyze_ref.py        事实层：探针 / 转写 / 镜头切点 / 逐像素版式量测（复刻链路的地基）
+  replica.py            复刻编排器：extract / shots / validate / jianying / auto
+  replica_extract.py    参考片 → spec.json（事实层 + 归类层，本地不花钱）
+  replica_shots.py      按屏抽代表帧 → assets[]
+  replica_voice.py      声音克隆（百炼 voice-enrollment，key 走环境变量）
+  jy_from_spec.py       spec.json → 剪映工程（图片轨 + 字幕轨 + 配音轨）
+  spec.schema.json      spec 契约（required: meta / subs / scenes）
 remotion/
   src/bs/Panel.tsx      一屏多句 + 元素累加（7 种元素）
   src/bs/Cards.tsx      19 种卡片组件
