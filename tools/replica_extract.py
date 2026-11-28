@@ -50,6 +50,10 @@ SCREEN_MIN_GAP = 0.55
 SECTION_PAUSE = 1.15
 # 章节标题最长字数
 SECTION_TITLE_MAX = 18
+# 单屏时长上限：超过就按字幕句边界补切（静态文档页 / 卖课页帧差抓不到边界）
+MAX_SCREEN_DUR = 8.0
+# 补切目标屏长
+TARGET_SCREEN_DUR = 6.0
 
 
 # ---------------------------------------------------------------- 小工具
@@ -234,6 +238,62 @@ def _coalesce(screens: list[dict], min_dur: float = 0.8) -> list[dict]:
     return out
 
 
+def split_long_screens(screens: list[dict], subs: list[dict],
+                       max_dur: float = MAX_SCREEN_DUR,
+                       target: float = TARGET_SCREEN_DUR) -> list[dict]:
+    """把超长屏按字幕句边界补切。
+
+    为什么需要：帧差只认「画面变了」。**静态文档页 / 长页滚动 / 卖课页**这类
+    段落画面几乎不动，`detect_changes` 抓不到边界，会留下十几秒甚至三十秒的
+    一屏（实测一条 607s 片：11 屏超 8s，最长 31.67s 覆盖 17 句）。画面卡住不动
+    是硬伤，所以按句边界切：切点落在句间空隙中点，**不切断任何一句字幕**。
+    """
+    if not screens or not subs:
+        return screens
+    out: list[dict] = []
+    for sc in screens:
+        dur = sc["e"] - sc["s"]
+        if dur <= max_dur:
+            out.append(sc)
+            continue
+        inside = [t for t in subs
+                  if t["s"] >= sc["s"] - 0.01 and t["e"] <= sc["e"] + 0.01]
+        need = max(2, int(round(dur / max(1.0, target))))
+        if len(inside) < need:
+            out.append(sc)
+            continue
+        # 候选切点 = 相邻两句之间的空隙中点
+        cand: list[tuple[float, int]] = []
+        for k in range(len(inside) - 1):
+            g0, g1 = float(inside[k]["e"]), float(inside[k + 1]["s"])
+            cand.append((max(g0, (g0 + g1) / 2.0), k + 1))
+        picks: list[float] = []
+        used: set[int] = set()
+        for j in range(1, need):
+            goal = sc["s"] + dur * j / need
+            best = None
+            for pos, kk in cand:
+                if kk in used:
+                    continue
+                d = abs(pos - goal)
+                if best is None or d < best[0]:
+                    best = (d, pos, kk)
+            if best is None:
+                continue
+            used.add(best[2])
+            picks.append(best[1])
+        if not picks:
+            out.append(sc)
+            continue
+        bounds = [sc["s"]] + sorted(picks) + [sc["e"]]
+        for j in range(len(bounds) - 1):
+            out.append({"s": bounds[j], "e": bounds[j + 1],
+                        "mode": sc["mode"], "shots": list(sc.get("shots", []))})
+    for k, sc in enumerate(out):
+        sc["idx"] = k
+    return out
+
+
 def infer_sections(subs: list[dict], total: float) -> list[dict]:
     """切章。先按长停顿切；切不出足够章数时按句数等分。
 
@@ -374,6 +434,7 @@ def build_spec(video: Path, report, args, asr_note: str = "") -> dict:
     shots = _f(report, "shots", default=[]) or []
     layouts = _f(report, "layouts", default=[]) or []
     screens = merge_shots(shots, layouts)
+    screens = split_long_screens(screens, subs)
 
     # 屏补齐：首屏从 0 开始，末屏到片尾
     if screens:

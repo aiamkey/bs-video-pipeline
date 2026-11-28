@@ -36,7 +36,10 @@ def main() -> int:
     if not src.is_file():
         sys.exit(f"[shots] 找不到源片：{src}")
 
-    adir = Path(a.outdir).resolve() if a.outdir else (sp.parent / "assets")
+    # 每片一个资产目录：多片共用 assets/ 会按 pNNN 互相覆盖（踩过，q6 的
+    # p000-p037 被后面的片盖掉，导致重导旧草稿时拿到错的图）
+    stem = sp.name[: -len(".spec.json")] if sp.name.endswith(".spec.json") else sp.stem
+    adir = Path(a.outdir).resolve() if a.outdir else (sp.parent / "assets" / stem)
     adir.mkdir(parents=True, exist_ok=True)
 
     n_ok = 0

@@ -768,6 +768,13 @@ $PY = "E:\miniconda\envs\JupyterProject\python.exe"   # 见下方「解释器」
 5. **配音走 `spec.voice.wav`** → audio 轨「配音」；不填就没有配音轨（不报错，只提示）。
 6. **`qa2\refanalysis\<片名>\facts.json` 是事实层缓存**，改代码后要 `--refresh` 才重跑；
    正常复用是秒级。
+7. **静态文档页 / 长页滚动 / 卖课页会留下一整块超长屏**（帧差抓不到边界）。
+   实测一条 607s 片：11 屏超 8s，最长 **31.67s 覆盖 17 句**。
+   `split_long_screens()` 会按字幕句边界补切（切点落在句间空隙中点，不切断任何一句），
+   修完 149 屏 → 163 屏、最长屏 8.0s、超 8s 屏 0 个。
+8. **`assets/` 必须按片分区**（`assets/<spec 名>/pNNN.jpg`）。早先所有 spec 共用
+   `out/assets/p000.jpg…`，后跑的片会把先前片的 p000+ 覆盖掉 —— 草稿因为已本地化看不出来，
+   但重导旧草稿就会拿到错的画面。现已按 spec 名分目录，旧 spec 需重跑一次 `replica_shots`。
 
 ---
 
