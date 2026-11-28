@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "replica 通用 spec.json",
+  "description": "MP4 渲染与剪映工程共用的唯一时间轴描述。由 replica.py normalize 从 q6.json / film.json / 手工分析产出；jy_from_spec.py 消费它生成剪映 tracks spec。定稿见 qa2/replica/需求规格-定稿.md §4。",
+  "type": "object",
+  "required": ["meta", "subs", "scenes"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["src_duration", "target_duration", "fps", "w", "h"],
+      "properties": {
+        "src": { "type": "string", "description": "参考片路径或片名" },
+        "name": { "type": "string", "description": "交付片名（deliver 目录名、剪映草稿名）" },
+        "src_duration": { "type": "number", "exclusiveMinimum": 0, "description": "参考片时长（秒）" },
+        "target_duration": { "type": "number", "exclusiveMinimum": 0, "description": "成片目标时长（秒），仿原片" },
+        "tolerance": { "type": "string", "description": "时长容差口径", "default": "max(2%, 5s)" },
+        "fps": { "type": "integer", "default": 30 },
+        "w": { "type": "integer", "default": 1280 },
+        "h": { "type": "integer", "default": 720 },
+        "kind": { "type": "string", "enum": ["animated"], "default": "animated", "description": "只收动画式；真人实拍/需 seedance 的一律不进" },
+        "deliver_dir": { "type": "string", "description": "deliver/<片名>/ 绝对路径或工作区相对路径" },
+        "bg": { "type": "string", "description": "全局底色，如 rgb(213,213,213)" }
+      }
+    },
+    "voice": {
+      "type": "object",
+      "description": "声音克隆链路产物。provider=jcaigc 独立网关；ref_audio=auto 从原片挑；voice_id 已填则跳过 create（零复刻费）",
+      "properties": {
+        "provider": { "type": "string", "default": "jcaigc" },
+        "clone_model": { "type": "string", "default": "cosyvoice-v3.5-plus" },
+        "speak_model": { "type": "string", "default": "cosyvoice-v3.5-plus", "description": "必须与 clone_model 一致，plus/flash 不混" },
+        "voice_id": { "type": "string", "description": "已有音色则填，跳过 create" },
+        "ref_audio": { "type": "string", "default": "auto", "description": "auto=从原片按 ASR 词级时间戳挑 10–20s 干净段；或给 wav 路径" },
+        "rate": { "type": "number", "default": 1.08, "description": "原生 rate 调速，禁 atempo" },
+        "wav": { "type": "string", "description": "合成后的整条配音 wav（相对 deliver_dir）" },
+        "segments": {
+          "type": "array",
+          "description": "按章/分段合成的片段，align 后写回",
+          "items": {
+            "type": "object",
+            "required": ["s", "e", "text"],
+            "properties": {
+              "s": { "type": "number" }, "e": { "type": "number" },
+              "text": { "type": "string" }, "wav": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "subs": {
+      "type": "array",
+      "description": "字幕：覆盖全片、不重叠、不越界。剪映字幕轨与 MP4 烧字幕都读它",
+      "items": {
+        "type": "object",
+        "required": ["s", "e", "text"],
+        "properties": {
+          "s": { "type": "number" }, "e": { "type": "number" },
+          "text": { "type": "string" },
+          "style": { "type": "string", "default": "white-black-stroke" },
+          "sub": { "type": "boolean", "default": true, "description": "false=该句不出字幕（大字卡等同此句）" }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "description": "叙事分段（钩子/问题N/推销/结尾…），80% 验收要对齐",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" }, "label": { "type": "string" },
+          "s": { "type": "number" }, "e": { "type": "number" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "description": "逐屏。s/e 连续铺满 target_duration；mode 是动画式版式枚举",
+      "items": {
+        "type": "object",
+        "required": ["s", "e", "mode"],
+        "properties": {
+          "s": { "type": "number" }, "e": { "type": "number" },
+          "mode": { "type": "string", "enum": ["chat", "scene", "title", "doc", "progress", "panel", "card"] },
+          "layout": {
+            "type": "object",
+            "description": "版式几何（像素实测值）。80% 验收要 >=80% 对齐",
+            "properties": {
+              "col": { "type": "array", "items": { "type": "number" }, "description": "白栏左右边界 [x1,x2]" },
+              "nav_y": { "type": "number" }, "sub_y": { "type": "number" },
+              "badge": { "type": "array", "items": { "type": "number" } },
+              "bg": { "type": "string" }
+            }
+          },
+          "assets": {
+            "type": "array",
+            "description": "GPT image 生成的画面位。provider=gpt-image 主路径",
+            "items": {
+              "type": "object",
+              "required": ["slot", "file"],
+              "properties": {
+                "slot": { "type": "string", "description": "画面位名：couple/bg/photo/person…" },
+                "prompt": { "type": "string", "description": "识别出的画面描述 → GPT prompt" },
+                "provider": { "type": "string", "default": "gpt-image" },
+                "file": { "type": "string", "description": "相对 deliver_dir 的素材文件" }
+              }
+            }
+          },
+          "graphics": { "type": "array", "items": { "type": "string" }, "description": "SVG/代码层听话图形：bubble:green / mark:red-x / nav / badge / sub…" },
+          "head": { "type": "string", "description": "大字口诀/标题" },
+          "kicker": { "type": "string" },
+          "bullets": { "type": "array", "items": { "type": "string" } },
+          "msgs": { "type": "array", "description": "chat 版式的气泡流，at 是相对本屏秒数", "items": { "type": "object" } }
+        }
+      }
+    },
+    "jianying": {
+      "type": "object",
+      "description": "剪映工程参数",
+      "properties": {
+        "tracks": { "type": "array", "items": { "type": "string" }, "default": ["video", "text", "audio", "sticker"] },
+        "draft_root": { "type": "string", "default": "auto", "description": "auto=读 jy_draft.load_env()" },
+        "localize": { "type": "boolean", "default": true, "description": "素材复制进草稿 assets/ 便于整目录搬走" }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "description": "80% 验收口径，写死不改",
+      "properties": {
+        "duration_diff": { "type": "string", "default": "<=2%" },
+        "sub_cover": { "type": "string", "default": "100%" },
+        "layout_align": { "type": "string", "default": ">=80%" },
+        "sections_align": { "type": "boolean", "default": true },
+        "audio_align": { "type": "boolean", "default": true }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "description": "可选：记录 normalize 来源与拆解证据，便于复现",
+      "properties": {
+        "from": { "type": "string" },
+        "source_file": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

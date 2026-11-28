@@ -147,6 +147,13 @@ check    文件大小 静止阈值 采样帧率
 | `tools/jy_cards.py` | 抽卡片静帧（垫满非 panel 段，否则一半黑场） |
 | `pipeline/jy_beauty_catalog.json` | 美颜滑杆 ↔ resource_id 对照（skin 8 / shape 13 / body 12 / makeup 54 / skin_tone 2） |
 | `pipeline/jy_text_effects.json` | 花字目录 1673 条（免费 94 条），`text_effect` 字段按中文名查 |
+| `pipeline/REPLICA.md` | **复刻需求规格定稿**（输入口径 / 保真定义 / 80% 验收 / 交付物） |
+| `tools/replica.py` | **复刻编排器**：`extract` / `shots` / `validate` / `jianying` / `auto` |
+| `tools/replica_extract.py` | 参考片 → `spec.json`（事实层 + 归类层，本地不花钱） |
+| `tools/replica_shots.py` | 按屏抽代表帧 → `assets[]`（进剪映图片轨） |
+| `tools/replica_voice.py` | 声音克隆（百炼 voice-enrollment / jcaigc 备用） |
+| `tools/jy_from_spec.py` | `spec.json` → 剪映工程（图片轨 + 字幕轨 + 配音轨） |
+| `tools/spec.schema.json` | spec 契约（required：`meta` / `subs` / `scenes`） |
 
 ---
 
@@ -684,6 +691,82 @@ ep02 实测：42 个素材进 assets（13.26 MB），`jy_check` 显示 `素材�
 机制：每条非 0 滑杆 → `materials.effects` 一条 `type=figure` + 挂到片段 `extra_material_refs`，
 并**必须同时补一条 `makeup-root`**；滑杆 0 = 不写（等价剪映里"关闭"）。花字走 `TextSegment.add_effect(id)`，
 同样必须在 `add_segment()` 之前调。
+
+---
+
+## 8.6 复刻一条新参考片（replica 链路）
+
+**场景**：别人给一条动画式视频（图文卡 / 聊天气泡 / 大字卡 / 文档页 / 卡通角色 / 进度导航），
+要照着它的结构做一条同构视频。**换片只换第一个参数，不改代码。**
+
+### 一条命令
+
+```powershell
+$PY = "E:\miniconda\envs\JupyterProject\python.exe"   # 见下方「解释器」小节，别用错
+& $PY tools\replica.py auto "D:\ref\新参考片.mp4" --name 新片_自动复刻
+# 只想要 spec、不要草稿： 加 --no-jianying
+# 只分析前 3 分钟：       加 --dur 180
+```
+
+产物三件：
+
+| 产物 | 位置 | 说明 |
+|---|---|---|
+| `spec.json` | `qa2\replica\out\<片名>.spec.json` | 结构事实：meta / subs / scenes / sections / voice |
+| `assets\` | 同上目录 | 每屏代表帧 `p000.jpg…` + `voice.wav`（原片音轨） |
+| 剪映草稿 | `…\JianyingPro Drafts\<name>\` | **图片轨 + 字幕轨 + 配音轨**，直接打开就能改 / 导出 |
+
+### 分步（要单步调参时）
+
+```powershell
+& $PY tools\replica.py extract --video REF.mp4 -o out\ref.spec.json   # 或直接跑 replica_extract.py
+& $PY tools\replica_shots.py --spec out\ref.spec.json                  # 每屏抽帧 → assets[]
+& $PY tools\replica.py validate --spec out\ref.spec.json               # 本地可判项体检
+& $PY tools\replica.py jianying --spec out\ref.spec.json --name 片名   # 出剪映草稿
+```
+
+### 实测（2026-11-28，两条不同片子）
+
+| 源片 | 分析窗 | 字幕 | 屏 | 章 | validate | 草稿 |
+|---|---|---|---|---|---|---|
+| 女生想和你处对象…6个问题 | 547.36s 全片 | 313 段 | 61 | 6 | PASS（diff 0.18s） | `Q6_自动复刻_v3` |
+| v3-pinlv | 180s | 126 段 | 38 | 3 | PASS（diff 0.02s） | `V3_自动复刻` |
+
+手工标注版是 58 屏 / 313 字幕，自动版 61 屏 —— 屏数差 5%，字幕数完全一致。
+
+### 它怎么判的（三层，前两层在本机跑完，不联网不花钱）
+
+1. **事实层**：ffmpeg 探针 + faster-whisper 转写 + 帧差切点 + 每镜中点帧的逐像素版式量测
+2. **归类层**：`1 shot = 1 屏`（见坑 2）；每屏按 `rows/cols/bright/contrast/sub_density` 判
+   `chat / title / doc / scene` 四型；字幕超 24 字才二次切；章节先按 ≥1.15s 停顿切，
+   切不够就按目标章数（约 90s 一章，3–8 章）等分
+3. **语义层（未接）**：每屏 prompt 目前是「版式事实 + 占位描述」。要重画就把
+   `scenes[].assets[].file` 换成 GPT 出的图、`voice.wav` 换成克隆音，**下游一个字都不用改**
+
+### 解释器（踩过两次，照抄）
+
+| 解释器 | faster-whisper | pyJianYingDraft | 能干什么 |
+|---|---|---|---|
+| `E:\miniconda\envs\JupyterProject\python.exe` | ✅ 1.2.1 | ✅ | **全链路**（ASR + 建草稿） |
+| `D:\pythons\python3.12\python.exe` | ❌ | ❌ | 只能 `extract --segs`（复用现成字幕）+ `shots`，出不了草稿 |
+
+`replica.py auto` 用 `--python` 指定子脚本解释器，默认跟随当前解释器。
+
+### 坑（都在这条链路上真实踩过）
+
+1. **`frame_profile` 的 `bright` / `contrast` 是 0–1 量纲，不是 0–255。**
+   按 0–255 写阈值（`bright>=140`）永远为假，会把全片判成一个类型。
+2. **屏边界来自「画面内容变化」，不是「版式差异」。** 这类片子整片版式指纹几乎不变
+   （61 帧相邻距离中位 0.028，最大 0.049），拿指纹聚类会把 61 屏合成 1 屏。
+   `analyze_ref` 的 shots 已经按内容变化切好了，**直接 1 shot = 1 屏**，只清理
+   <0.3s 抖动与 <0.8s 的同型碎屏。
+3. **`--dur` 只分析片段时，`meta` 时长要取窗口终点**（`start+dur`），
+   否则末屏会被拉到整片时长、validate 直接报字幕越界。
+4. **剪映导出的契约是 `scenes[].assets[].{slot, file}`（数组），不是 `asset.path`。**
+   同 `slot` 进同一条视频轨，`file` 相对 spec 目录解析；每项自动挂 1.0→1.035 慢推。
+5. **配音走 `spec.voice.wav`** → audio 轨「配音」；不填就没有配音轨（不报错，只提示）。
+6. **`qa2\refanalysis\<片名>\facts.json` 是事实层缓存**，改代码后要 `--refresh` 才重跑；
+   正常复用是秒级。
 
 ---
 
