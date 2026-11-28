@@ -24,3 +24,7 @@ Thumbs.db
 # 本机环境探测产物（含绝对路径）
 tools/jy.env
 
+# 复刻产物（analysis 缓存 / spec / 抽帧，跑一次就重建）
+qa2/
+deliver/
+

@@ -150,6 +150,7 @@ check    文件大小 静止阈值 采样帧率
 | `pipeline/REPLICA.md` | **复刻需求规格定稿**（输入口径 / 保真定义 / 80% 验收 / 交付物） |
 | `tools/replica.py` | **复刻编排器**：`extract` / `shots` / `validate` / `jianying` / `auto` |
 | `tools/replica_extract.py` | 参考片 → `spec.json`（事实层 + 归类层，本地不花钱） |
+| `tools/analyze_ref.py` | **事实层核心**：探针 / 转写 / 镜头切点 / 版式量测（replica 依赖它，缺了就 ImportError） |
 | `tools/replica_shots.py` | 按屏抽代表帧 → `assets[]`（进剪映图片轨） |
 | `tools/replica_voice.py` | 声音克隆（百炼 voice-enrollment / jcaigc 备用） |
 | `tools/jy_from_spec.py` | `spec.json` → 剪映工程（图片轨 + 字幕轨 + 配音轨） |
