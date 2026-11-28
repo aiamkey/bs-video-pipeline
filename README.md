@@ -69,8 +69,31 @@ python tools/replica.py auto "D:\ref\任意新片.mp4" --name 新片_自动复�
 
 实测：547s 片 → 313 字幕 / 61 屏 / 6 章；180s 片 → 126 字幕 / 38 屏 / 3 章，`validate` 全 PASS（时长差 0.02–0.18s）。
 
-事实层（转写 / 切点 / 版式量测）全在本机跑，**不联网不花钱**。画面重画（GPT 出图替代表帧）与声音克隆（替原声）
-是可选增强，配置就位、尚未接线 —— 接上后只换 `scenes[].assets[].file` 与 `voice.wav`，**下游一个字不用改**。
+事实层（转写 / 切点 / 版式量测）全在本机跑，**不联网不花钱**。两条增强已接线，都是按张 / 按次花钱的：
+
+**换画面**——把原片截图换成自己生成的插画，画面语义按该屏字幕生成：
+
+```bash
+python tools\replica_redraw.py --spec "qa2/replica/out/<片名>.spec.json" --only 0,2,7 --apply  # 先小样看风格
+python tools\replica_redraw.py --spec "qa2/replica/out/<片名>.spec.json" --apply              # 满意后全量
+```
+
+**换声音**——克隆音色 → 逐句合成 → 按原片时间轴铺回整条：
+
+```bash
+python tools\replica_voice.py extract-ref "qa2\replica\segs-<片名>.json" "qa2\replica\ref.wav" --src "<原片>"
+python tools\replica_voice.py create "qa2\replica\ref.wav" --yes   # 建音色，计费且不会自动删
+python tools\replica_voice.py wait
+python tools\replica_voice.py speak "qa2\replica\out\<片名>.spec.json" "qa2\replica\voice-out" --yes
+python tools\replica_assemble.py --spec "qa2\replica\out\<片名>.spec.json" --voice-dir "qa2\replica\voice-out"
+```
+
+两者都只改 `scenes[].assets[].file` 与 `voice.wav`，**下游一个字不用改**；重跑 `replica.py jianying` 就是新版本。
+
+两个硬约束（不满足会直接跑不起来）：声音克隆要**带 `Client` 的 dashscope 2.x**（conda 环境里那把 1.26.4 没有），
+以及**先把 proxy 环境变量清干净**（系统 `no_proxy` 里的 `[::1]` 会让 httpx 抛 `Invalid port`）。
+另外这个克隆音色**忽略 `speech_rate`**，语速只能靠装配端 `atempo` 保音高压缩（默认 `--max-tempo 1.6`）。
+细节见 [`SKILL.md` §8.6.1 / §8.6.2](SKILL.md)。
 
 分步用法、四型判定规则、解释器对照与 6 条坑见 [`SKILL.md` §8.6](SKILL.md)；输入口径与 80% 验收见 [`pipeline/REPLICA.md`](pipeline/REPLICA.md)。
 
