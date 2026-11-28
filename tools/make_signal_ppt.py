@@ -72,7 +72,7 @@ FLASH = [
 # 纯图版（不要文字）用的**连贯**转场序列：方向感强、不留停顿
 # push 连推 → 覆盖叠层 → 擦除 → 溶解 → 缩放收尾，全程 med 速度
 FLOW = [
-    "fade",         # 1 封面：淡入
+    "zoom",         # 1 开场：从远拉近，比淡入更抓眼
     "push",         # 2 开场推进
     "push",         # 3 连推，像镜头往前
     "cover",        # 4 叠一层
@@ -81,7 +81,7 @@ FLOW = [
     "push",         # 7
     "wipe",         # 8 横向擦
     "push",         # 9
-    "fade",         # 10 转折：断一下节奏
+    "cover",        # 10 转折：换层，不切断
     "zoom",         # 11 拉近
     "cover",        # 12
     "push",         # 13
@@ -271,8 +271,14 @@ def main() -> None:
     ap.add_argument("--open", action="store_true", help="出完直接打开")
     ap.add_argument("--no-text", action="store_true",
                     help="纯图版：不放标题/副文/页码，只做画面与转场衔接")
+    ap.add_argument("-o", "--out", default="", help="输出路径（默认按 --no-text 取名）")
     a = ap.parse_args()
-    target = ROOT / "deliver" / ("七个信号-动画版.pptx" if a.no_text else "七个信号-图文版.pptx")
+    if a.out:
+        target = pathlib.Path(a.out)
+        if not target.is_absolute():
+            target = ROOT / target
+    else:
+        target = ROOT / "deliver" / ("七个信号-动画版.pptx" if a.no_text else "七个信号-图文版.pptx")
     out = build(no_text=a.no_text, out=target)
     print(f"[ppt] 写出 {out}  {out.stat().st_size / 1024 / 1024:.2f} MB  页数 {len(PAGES)}")
     if a.open:
