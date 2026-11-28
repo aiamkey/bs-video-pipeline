@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -70,7 +71,8 @@ def build_srt(subs: list[dict], path: Path) -> int:
 
 
 def render(spec_path: Path, out: Path, voice: Path | None, subs_on: bool,
-           crf: int, fps: int, placeholder: str, dry: bool) -> int:
+           crf: int, fps: int, placeholder: str, dry: bool,
+           xfade: float = 0.0, xfade_style: str = "fade") -> int:
     spec = json.loads(spec_path.read_text(encoding="utf-8-sig"))
     meta = spec.get("meta") or {}
     total = float(meta.get("target_duration") or meta.get("src_duration") or meta.get("duration") or 0)
@@ -126,61 +128,131 @@ def render(spec_path: Path, out: Path, voice: Path | None, subs_on: bool,
     # 时 Windows 会拒绝删除 / 或残留占用；改成显式 mkdtemp 并把现场留着便于排查。
     td = Path(tempfile.mkdtemp(prefix="replica_render_"))
     try:
-        listfile = td / "list.txt"
-        lines = []
-        last_file = ""
-        for i, (im, s, e) in enumerate(timeline):
-            dur = max(0.04, e - s)
+        srt = td / "sub.srt"
+        n_sub = build_srt(subs, srt) if subs_on else 0
+
+        scale_chain = (
+            f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+            f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color={placeholder.replace('0x', '#')},"
+            f"setsar=1,fps={fps},format=yuv420p"
+        )
+        sub_style = (
+            f"subtitles=sub.srt:force_style='FontName={FONT},FontSize=22,"
+            f"PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=1,Shadow=0,"
+            f"MarginV=28'"
+        )
+
+        # 缺图的片先落成一张占位 PNG（两条路径都要用）
+        pics: list[Path] = []
+        for i, (im, _s, _e) in enumerate(timeline):
             if im is None:
-                # 用一个纯色帧当占位（-f lavfi 不能进 concat，先转成图）
                 ph = td / f"ph{i:04d}.png"
                 subprocess.run([ffmpeg(), "-y", "-loglevel", "error", "-f", "lavfi",
                                 "-i", f"color=c={placeholder}:s={w}x{h}:d=1",
                                 "-frames:v", "1", str(ph)], check=True)
                 im = ph
-            # 必须绝对路径：concat 列表里的相对路径是相对 list.txt 解析的，
-            # ffmpeg 的 cwd 又指向临时目录，相对路径一定打不开（踩过）。
-            last_file = im.resolve().as_posix()
-            lines.append(f"file '{last_file}'")
-            lines.append(f"duration {dur:.3f}")
-        # concat 已知怪癖：末项要再写一次，否则最后一帧被吞
-        if last_file:
-            lines.append(f"file '{last_file}'")
-        listfile.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        assert listfile.exists(), f"concat 列表没写出来：{listfile}"
-        print(f"[render] 工作目录 {td}  list.txt {listfile.stat().st_size} B  行数 {len(lines)}")
+            pics.append(im)
+        durs = [max(0.04, e - s) for _im, s, e in timeline]
 
-        srt = td / "sub.srt"
-        n_sub = build_srt(subs, srt) if subs_on else 0
+        if xfade > 0 and len(pics) > 1:
+            # ---------------- 位移过渡（凯哥那种 slide） ----------------
+            # 每屏多给 xfade 秒做重叠，屏 i 的起点仍是 sum(d[0..i-1])，
+            # 所以总时长不变、字幕时间轴也不用动。
+            cmd = [ffmpeg(), "-y", "-loglevel", "error", "-stats"]
+            # 163 个输入的绝对路径加起来会撞 Windows 命令行 32K 上限（中文路径尤其费），
+            # 所以先硬链进临时目录、只用 sNNNN.jpg 这样的短名（cwd 已设成 td）。
+            for i, im in enumerate(pics):
+                ext = im.suffix or ".jpg"
+                dst = td / f"s{i:04d}{ext}"
+                if not dst.exists():
+                    try:
+                        os.link(im, dst)
+                    except OSError:
+                        shutil.copy2(im, dst)
+            for i, im in enumerate(pics):
+                dur = durs[i] + (xfade if i < len(pics) - 1 else 0.0)
+                cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", f"s{i:04d}{im.suffix or '.jpg'}"]
+            has_voice = bool(voice and voice.exists())
+            if has_voice:
+                cmd += ["-i", str(voice.resolve())]
 
-        vf = [f"scale={w}:{h}:force_original_aspect_ratio=decrease",
-              f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color={placeholder.replace('0x', '#')}",
-              "setsar=1", "format=yuv420p"]
-        if n_sub:
-            # 字幕文件用相对路径（cwd 指到 td），躲开 Windows 盘符转义
-            vf.append(f"subtitles=sub.srt:force_style='FontName={FONT},FontSize=22,"
-                      f"PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=1,Shadow=0,"
-                      f"MarginV=28'")
+            parts = [f"[{i}:v]scale={w}:{h},setsar=1[v{i}]" for i in range(len(pics))]
+            # 说明：这里故意用最省的链（直接拉伸到 w:h）。重画图 1672x941 对 16:9
+            # 只差 0.06%，肉眼看不出来；而 163 段完整 scale+pad 链能把
+            # -filter_complex 顶到 35KB，直接撞 Windows 命令行上限（WinError 206）。
+            cur, acc = "v0", durs[0]
+            for i in range(1, len(pics)):
+                parts.append(
+                    f"[{cur}][v{i}]xfade=transition={xfade_style}:duration={xfade}:offset={acc:.3f}[x{i}]"
+                )
+                cur = f"x{i}"
+                acc += durs[i]
+            last = cur
+            if n_sub:
+                parts.append(f"[{last}]{sub_style}[vout]")
+                last = "vout"
 
-        cmd = [ffmpeg(), "-y", "-loglevel", "error", "-stats",
-               "-f", "concat", "-safe", "0", "-i", str(listfile)]
-        if voice and voice.exists():
-            cmd += ["-i", str(voice.resolve())]
-        cmd += ["-vf", ",".join(vf), "-r", str(fps),
-                "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-pix_fmt", "yuv420p"]
-        if voice and voice.exists():
-            cmd += ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k",
-                    "-af", "apad", "-shortest"]
+            cmd += ["-filter_complex", ";\n".join(parts), "-map", f"[{last}]"]
+            if has_voice:
+                cmd += ["-map", f"{len(pics)}:a:0", "-c:a", "aac", "-b:a", "192k",
+                        "-af", "apad", "-shortest"]
+            else:
+                cmd += ["-an"]
+            cmd += ["-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
+                    "-r", str(fps),
+                    "-pix_fmt", "yuv420p", "-t", f"{total:.3f}",
+                    "-movflags", "+faststart", str(out.resolve())]
+
+            print(f"[render] 过渡 xfade={xfade_style} {xfade}s  字幕 {n_sub} 段  "
+                  f"音轨 {'有' if has_voice else '无'}")
+            print("[render] 开始渲染（xfade 链，耗时比硬切长）…")
+            r = subprocess.run(cmd, cwd=str(td), capture_output=True, text=True)
+            if r.returncode != 0:
+                print(r.stderr[-2500:], file=sys.stderr)
+                raise SystemExit(f"[render] ffmpeg 失败（exit {r.returncode}）")
         else:
-            cmd += ["-an"]
-        cmd += ["-t", f"{total:.3f}", "-movflags", "+faststart", str(out.resolve())]
+            # ---------------- 硬切（concat demuxer） ----------------
+            listfile = td / "list.txt"
+            lines = []
+            last_file = ""
+            for i, (im, s, e) in enumerate(timeline):
+                dur = max(0.04, e - s)
+                # 必须绝对路径：concat 列表里的相对路径是相对 list.txt 解析的，
+                # ffmpeg 的 cwd 又指向临时目录，相对路径一定打不开（踩过）。
+                last_file = pics[i].resolve().as_posix()
+                lines.append(f"file '{last_file}'")
+                lines.append(f"duration {dur:.3f}")
+            # concat 已知怪癖：末项要再写一次，否则最后一帧被吞
+            if last_file:
+                lines.append(f"file '{last_file}'")
+            listfile.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            assert listfile.exists(), f"concat 列表没写出来：{listfile}"
 
-        print(f"[render] 字幕 {n_sub} 段  音轨 {'有' if voice and voice.exists() else '无（静音片）'}")
-        print("[render] 开始渲染 …")
-        r = subprocess.run(cmd, cwd=str(td), capture_output=True, text=True)
-        if r.returncode != 0:
-            print(r.stderr[-2500:], file=sys.stderr)
-            raise SystemExit(f"[render] ffmpeg 失败（exit {r.returncode}）")
+            vf = [f"scale={w}:{h}:force_original_aspect_ratio=decrease",
+                  f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color={placeholder.replace('0x', '#')}",
+                  "setsar=1", "format=yuv420p"]
+            if n_sub:
+                vf.append(sub_style)
+
+            cmd = [ffmpeg(), "-y", "-loglevel", "error", "-stats",
+                   "-f", "concat", "-safe", "0", "-i", str(listfile)]
+            if voice and voice.exists():
+                cmd += ["-i", str(voice.resolve())]
+            cmd += ["-vf", ",".join(vf), "-r", str(fps),
+                    "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-pix_fmt", "yuv420p"]
+            if voice and voice.exists():
+                cmd += ["-map", "0:v:0", "-map", "1:a:0", "-c:a", "aac", "-b:a", "192k",
+                        "-af", "apad", "-shortest"]
+            else:
+                cmd += ["-an"]
+            cmd += ["-t", f"{total:.3f}", "-movflags", "+faststart", str(out.resolve())]
+
+            print(f"[render] 字幕 {n_sub} 段  音轨 {'有' if voice and voice.exists() else '无（静音片）'}")
+            print("[render] 开始渲染 …")
+            r = subprocess.run(cmd, cwd=str(td), capture_output=True, text=True)
+            if r.returncode != 0:
+                print(r.stderr[-2500:], file=sys.stderr)
+                raise SystemExit(f"[render] ffmpeg 失败（exit {r.returncode}）")
     finally:
         pass          # 现场（list.txt / sub.srt / 占位图）留在 mkdtemp 目录里，方便查
 
@@ -203,10 +275,15 @@ def main() -> int:
     ap.add_argument("--crf", type=int, default=20)
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--placeholder", default=PLACEHOLDER)
+    ap.add_argument("--xfade", type=float, default=0.0,
+                    help="屏间过渡秒数（0=硬切；凯哥那种给 0.3）")
+    ap.add_argument("--xfade-style", default="fade",
+                    help="过渡样式：fade(交叉溶解，默认) / slideup / smoothup / wipeup / "
+                         "slideleft / slideright / wipeleft / circleopen / dissolve 等 ffmpeg xfade 名")
     ap.add_argument("--dry", action="store_true")
     a = ap.parse_args()
     return render(Path(a.spec), Path(a.out), Path(a.voice) if a.voice else None,
-                  not a.no_subs, a.crf, a.fps, a.placeholder, a.dry)
+                  not a.no_subs, a.crf, a.fps, a.placeholder, a.dry, a.xfade, a.xfade_style)
 
 
 if __name__ == "__main__":

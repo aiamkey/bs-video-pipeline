@@ -880,6 +880,34 @@ python tools\replica_render.py --spec "qa2\replica\out\<片名>.spec.json" `
 **交付前必须全量重画**。没重画的屏用的还是原片截图，**原片自带的字幕会跟我们烧的字幕叠在一起**
 （实测 300s 处能看到两层字）。`replica_redraw.py` 全量跑完再 `replica_render.py`，才是干净片子。
 
+### 8.6.3b 位移过渡：把硬切改成凯哥那种「滑」
+
+`replica_render.py --xfade 0.3` 让屏与屏之间做 0.3s 上滑过渡（`xfade=slideup`），
+从「一屏一屏硬切」变成「画面像卡片往上滚」。
+
+```powershell
+python tools\replica_render.py --spec ... -o 成片.mp4 --voice voice.wav --xfade 0.3
+```
+
+**原理（关键，别改错）**：前 n−1 屏每屏多给 `xfade` 秒做重叠，屏 i 的起点仍然是
+`sum(d[0..i−1])`——**总时长不变，字幕时间轴一个字都不用动**。
+如果反过来把每屏时长按比例放大，字幕会整体后移，全片对不上。
+
+**两个 Windows 坑**
+
+1. **`-filter_complex` 会撞 32K 命令行上限**（`WinError 206 文件名或扩展名太长`）。
+   163 屏用完整的 `scale+pad+setsar+fps+format` 链是 35 KB，必炸。两条对策一起上：
+   把图**硬链进临时目录用 `sNNNN.jpg` 短名**（`os.link`，失败退 `copy2`），
+   再把每屏链压成 `scale=W:H,setsar=1`（重画图 1672×941 对 16:9 只差 0.06%）。
+2. **`-filter_complex_script` 这台 ffmpeg 不认**（`Unrecognized option`），只能传字符串——
+   所以才要拼命压长度。
+
+**跟凯哥的差距**：位移有了，还差「元素逐个入场」（他的气泡/标签是一个个淡进来的）。
+那需要在 Remotion 那条线（`Panel.tsx` 的 `interpolate(frame-atF,[0,8],[0,1])`）做，
+ffmpeg 烧静态图做不到。
+
+---
+
 ### 8.6.4 一条龙：新片进来怎么跑
 
 按顺序七步，每步都能单独停、单独查：
