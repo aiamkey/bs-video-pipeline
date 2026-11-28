@@ -801,6 +801,11 @@ python tools\replica_redraw.py --spec ... --revert
 - 落盘：`qa2/replica/out/assets/<片名>/redraw/pNNN.jpg`（原帧 `pNNN.jpg` 保留，随时可回退）。
 - **交付前必须人眼过一遍**：即使 prompt 写了「不要文字」，模型仍会偶发写出标题字/乱码，
   `--only` 挑那几屏重画即可。
+- **`--apply` 并发跑会互相覆盖 spec。** 单张慢到 60s+ 时可以开三路 `--only` 提速
+  （如 55–90 / 91–126 / 127–162），三条线确实并行出图；但每路都是
+  「读整份 spec → 改自己那几屏 → 整份写回」，后写的把先写的覆盖掉
+  （实测 163 屏最后只有 86 屏真的指向 `redraw/`）。收尾要么串行补 `--apply`，
+  要么事后统一重定向：遍历 `scenes`，`redraw/pNNN.jpg` 存在就改 `assets[0].file`。
 
 ### 8.6.2 换声音：`replica_voice.py` + `replica_assemble.py`（声音克隆）
 
@@ -874,6 +879,25 @@ python tools\replica_render.py --spec "qa2\replica\out\<片名>.spec.json" `
 
 **交付前必须全量重画**。没重画的屏用的还是原片截图，**原片自带的字幕会跟我们烧的字幕叠在一起**
 （实测 300s 处能看到两层字）。`replica_redraw.py` 全量跑完再 `replica_render.py`，才是干净片子。
+
+### 8.6.4 一条龙：新片进来怎么跑
+
+按顺序七步，每步都能单独停、单独查：
+
+1. **结构**　`python tools\replica.py auto "新片.mp4" --name 新片_复刻`
+   → `spec.json`（屏/字幕/章节/时长）+ 原帧 `assets/` + 剪映草稿。先看 `validate` 是不是 PASS。
+2. **定风格**　`replica_redraw.py --only 0,2,7,11,16,21`（6 屏小样，花 6 张的钱）。
+   不满意改 `STYLE` 常量重跑，**不要逐屏调**。
+3. **画全量**　`replica_redraw.py --apply`（并发提速的坑见 §8.6.1 末条）。
+4. **克隆音**　`replica_voice.py extract-ref` → `create` → `speak --spec ...`（§8.6.2，
+   要 `dashscope>=2.0` 的 `Client`，独立 venv 最省事）。
+5. **铺音轨**　`replica_assemble.py --spec ... `（超格段 atempo，默认上限 1.6）。
+6. **出片**　`replica_render.py --spec ... -o 成片.mp4 --voice voice.wav`。
+7. **换草稿素材**　`replica.py jianying --spec ... --name 新片_复刻`（草稿指向重画图，可编辑交付）。
+
+**实测耗时（607s 片 / 163 屏 / 392 字幕）**：结构 3min（ASR 占大头，有缓存就秒级）、
+重画 1.5h（并发）、配音 5min、装配 1min、渲染 6min → **全流程约 2 小时**，
+其中 90% 是等出图。
 
 ---
 
