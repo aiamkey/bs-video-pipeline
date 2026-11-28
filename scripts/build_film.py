@@ -60,6 +60,20 @@ def panel_bg(v):
     return None
 
 
+def panel_photo(v):
+    """真人底图路径（可选）。有 photo 就优先用真人，没有就回落卡通 bg。"""
+    if isinstance(v, dict):
+        return v.get("photo")
+    return None
+
+
+def panel_zone(v):
+    """文字放哪侧（right/left），只有 photo 模式才用。"""
+    if isinstance(v, dict):
+        return v.get("text_zone")
+    return None
+
+
 lines, sections = [], []
 panels = []
 cur = None
@@ -95,6 +109,8 @@ for ci, ch in enumerate(tl["chapters"]):
                 cur = {
                     "id": pid,
                     "bg": panel_bg(src_line.get("panel")) or "textures/lib/sofa-wrong.jpg",
+                    "photo": panel_photo(src_line.get("panel")),
+                    "text_zone": panel_zone(src_line.get("panel")) or "right",
                     "start": line["start"],
                     "end": line["end"],
                     "first": len(lines),

@@ -30,7 +30,9 @@
      "text": "我见过太多这样的兄弟，一米八，工作稳定，就是单着。",
      "panel": {
       "id": "p1",
-      "bg": "textures/lib/mirror-air.jpg"
+      "bg": "textures/lib/mirror-air.jpg",
+      "photo": "textures/stock/pick/businessman-walking-city-pe-13801771.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "label",
@@ -108,7 +110,9 @@
      "text": "你以为这叫真诚，在女生眼里，这叫没有生活。",
      "panel": {
       "id": "p2",
-      "bg": "textures/lib/sofa-air.jpg"
+      "bg": "textures/lib/sofa-air.jpg",
+      "photo": "textures/stock/pick/man-sitting-alone-cafe-win-pe-9601212.jpg",
+      "text_zone": "right"
      },
      "els": [
       {
@@ -152,7 +156,9 @@
      "text": "人只会珍惜需要争取的东西。",
      "panel": {
       "id": "p3",
-      "bg": "textures/lib/metro-air.jpg"
+      "bg": "textures/lib/metro-air.jpg",
+      "photo": "textures/stock/pick/man-putting-on-suit-jacket-pe-12919459.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "box",
@@ -216,7 +222,9 @@
      "text": "问你周末干嘛，你说在家躺着。",
      "panel": {
       "id": "p4",
-      "bg": "textures/lib/bed-air.jpg"
+      "bg": "textures/lib/bed-air.jpg",
+      "photo": "textures/stock/pick/man-applying-face-cream-pe-7490461.jpg",
+      "text_zone": "left"
      },
      "el": {
       "kind": "bubble",
@@ -253,7 +261,9 @@
      "text": "但女生听到的是，加入你的生活没什么可期待的。",
      "panel": {
       "id": "p5",
-      "bg": "textures/lib/office-air.jpg"
+      "bg": "textures/lib/office-air.jpg",
+      "photo": "textures/stock/pick/asian-man-office-work-pe-6930599.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "box",
@@ -288,7 +298,9 @@
      "text": "是你能不能带她去一个她没去过的地方。",
      "panel": {
       "id": "p6",
-      "bg": "textures/lib/noodle-air.jpg"
+      "bg": "textures/lib/noodle-air.jpg",
+      "photo": "textures/stock/pick/man-eating-alone-restauran-pi-0002.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "label",
@@ -337,7 +349,9 @@
      "text": "聊了两周，还在问在干嘛。",
      "panel": {
       "id": "p7",
-      "bg": "textures/lib/night-air.jpg"
+      "bg": "textures/lib/night-air.jpg",
+      "photo": "textures/stock/pick/chinese-couple-date-cafe-pe-30569478.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "bubble",
@@ -390,7 +404,9 @@
      "text": "你怕被拒绝，所以一直不给答案。",
      "panel": {
       "id": "p8",
-      "bg": "textures/lib/street-air.jpg"
+      "bg": "textures/lib/street-air.jpg",
+      "photo": "textures/stock/pick/man-standing-balcony-city-pi-0007.jpg",
+      "text_zone": "right"
      },
      "el": {
       "kind": "label",
@@ -454,7 +470,9 @@
      "text": "第一，把回消息的时间拉长。",
      "panel": {
       "id": "p9",
-      "bg": "textures/lib/gym-air.jpg"
+      "bg": "textures/lib/gym-air.jpg",
+      "photo": "textures/stock/pick/muscular-man-gym-pe-17559311.jpg",
+      "text_zone": "left"
      },
      "el": {
       "kind": "num",
@@ -556,7 +574,9 @@
      "text": "记住，你不是没人要。",
      "panel": {
       "id": "p10",
-      "bg": "textures/lib/wardrobe-air.jpg"
+      "bg": "textures/lib/wardrobe-air.jpg",
+      "photo": "textures/stock/pick/man-in-suit-portrait-pe-7792750.jpg",
+      "text_zone": "left"
      },
      "el": {
       "kind": "icon",
@@ -593,7 +613,9 @@
      "text": "你不用变成另一个人，你只要把那三个东西拿掉。",
      "panel": {
       "id": "p11",
-      "bg": "textures/lib/door-air.jpg"
+      "bg": "textures/lib/door-air.jpg",
+      "photo": "textures/stock/pick/man-walking-street-sunset-pi-0007.jpg",
+      "text_zone": "right"
      },
      "els": [
       {

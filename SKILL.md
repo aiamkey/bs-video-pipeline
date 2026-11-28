@@ -1,4 +1,4 @@
-﻿---
+---
 name: bs-video-pipeline
 description: 「男生变帅」口播短视频流水线（对标抖音凯哥恋爱说）。唯一真源是 lbr-promo/pipeline/config.json；一条命令按 配音→对齐→合成数据→渲染→混音→质检 跑完，渲染前先用 audit.py 做排布体检。当要出男生变帅/形象管理类横屏口播片、改脚本或卡片、调语速/时长/卡型、用 panel（一屏多句+元素累加）排片、加卡通底板素材、把 film.json 转成剪映工程、排查字幕不同步/闪白/静止过长/元素排布像PPT/黑场/音色问题时使用。Use when producing or tuning the boys-looksmaxxing talking-head video pipeline.
 ---
@@ -347,6 +347,33 @@ y 建议分档 **24 / 48 / 70**，三个元素错开；超过 74 会撞字幕。
 成品底板存 `public/textures/lib/{scene}-air.jpg`（`-air` 后缀 = 留白版）。
 没有留白的图只能做"整屏卡片"，不能做 panel。
 
+#### 真人底图（`photo`）：panel 的第二种底板
+
+卡通底板讲抽象概念，真人照片讲"处境"。同一种 panel，只换底板来源：
+
+```json
+{"text": "你不是不会聊，是不敢开口。", "panel": {
+  "id": "p5", "photo": "textures/real/coffee-left.jpg", "text_zone": "right"},
+ "el": {"kind": "box", "text": "不敢开口", "x": 72, "y": 46, "size": 34}}
+```
+
+| 字段 | 取值 | 作用 |
+|---|---|---|
+| `photo` | 相对 `public/` 的路径 | 有则**替代** `bg`，走真人分支；没有就回落卡通底板 |
+| `text_zone` | `right`（默认）/ `left` | 文字放哪侧 |
+
+真人分支自带三件事，不用在 script 里写：
+
+1. **Ken Burns 缓推**：`scale` 1.08 → 1.14 线性走完本屏，`transformOrigin: 50% 35%`（锁头部）
+2. **反向微移**：`text_zone=right` 时画面向左推（`translateX -1% → +1%`），把人物"让"给文字侧；`left` 反过来
+3. **文字侧压暗**：从 42% 处开始渐变，58% 到 `rgba(8,6,4,.78)`，100% 到 `.88`——保证白字在亮背景上也压得住
+
+`build_film.py` 的 `panel_photo()` / `panel_zone()` 把这两个字段写进 `film.json` 的 panel 对象（`Remotion` 侧 `Panel.tsx` 读）。
+
+**素材硬要求**：真人照必须"人物偏一侧 + 另一侧干净"。人物居中、脸占满屏的图，压暗区没地方落字，只能整屏当背景板（那就别用 panel，用 `card.type=photo` 之外的普通镜头）。
+
+> 判断标准：`text_zone` 那一侧的 40% 宽度里，**没有脸、没有手、没有主体动作**。有就换图，别指望压暗遮住——压暗到 .88 会把人拍黑。
+
 #### 验收
 
 抽 2 帧（同屏首句、末句），比**画面边缘 10% 区域**的平均色差：
@@ -664,8 +691,9 @@ ep02 实测：42 个素材进 assets（13.26 MB），`jy_check` 显示 `素材�
 
 **已完成**
 
-- 引擎：`build_film.py` 支持 `panel`（一屏多句 + 元素累加）；`Panel.tsx` 7 种元素；
-  `DataFilm.tsx` 卡片层与 panel 层共存；`Enter` 全片 1.028 慢推。
+- 引擎：`build_film.py` 支持 `panel`（一屏多句 + 元素累加）；`Panel.tsx` 7 种元素，
+  底板两通道：卡通 `bg` 与真人 `photo`（Ken Burns 缓推 + 文字侧压暗，见 §5.6）；
+  `DataFilm.tsx` 卡片层与 panel 层共存，另有 `DataFilmNoSub`（无字幕母版）；`Enter` 全片 1.028 慢推。
 - 素材：12 张 `-air` 留白底板（sofa/noodle/door/bed/metro/cafe/office/gym/street/wardrobe/mirror/night）；
   11 张旧风格卡通（`slides/u*b`）；6 张实拍（`textures/bs/*`）；`library.json` 36 条清单。
 - 工具：`run.py`（plan/voice/align/build/render/mix/check/all）、`check.py`（11 项硬/软分级）、
@@ -704,7 +732,7 @@ ep02 实测：42 个素材进 assets（13.26 MB），`jy_check` 显示 `素材�
 | 话和图对不上 | **顺序问题** | 先攒图后套句子必然错；改成先列场景再出图（§6.2） |
 | 卡通只有单姿势、没有对手戏 | **生图能力上限** | `wanx2.1-t2i-turbo + seed` 只能"同一个人换场景"，做不到连续动作/双人对戏。换文案模型不解决，要换 image-edit 通道 |
 | 文案不够敢说 | **模型能力** | 换更强的文本模型确实会好，这是真实差距，骨架已量化但"那口气"还在 |
-| 没有真人出镜 | **客观不可行** | 无演员、无授权素材，只能全卡通，天然低一档 |
+| 没有真人出镜 | **半可解** | panel `photo` 通道能上真人**静态照**（§5.6），解决"处境感"；但真人连续动作/对戏仍做不到——那是拍摄，不是渲染 |
 | 剪映里元素不能单独选中 | **工具边界** | 剪映数据结构所限；改字要回 Remotion 重生成（§15 `JIANYING.md`） |
 | 剪映导出必须手点 | **工具边界** | 第三方库拿不到官方全保真导出 |
 

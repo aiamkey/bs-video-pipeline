@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 import { BsFilm, BS_TOTAL } from './bs/FilmBs';
-import { DataFilm, DATA_TOTAL } from './bs/DataFilm';
+import { DataFilm, DataFilmNoSub, DATA_TOTAL } from './bs/DataFilm';
 import { DataFilm3, DATA_TOTAL3 } from './bs/DataFilm3';
 import { DataFilm4, DATA_TOTAL4 } from './bs/DataFilm4';
 import { CartoonDemo, CARTOON_DEMO_TOTAL } from './bs/CartoonDemo';
@@ -16,6 +16,14 @@ export const Root: React.FC = () => {
       <Composition
         id="DataFilm"
         component={DataFilm}
+        durationInFrames={DATA_TOTAL}
+        fps={30}
+        width={1280}
+        height={720}
+      />
+      <Composition
+        id="DataFilmNoSub"
+        component={DataFilmNoSub}
         durationInFrames={DATA_TOTAL}
         fps={30}
         width={1280}

@@ -23,6 +23,8 @@ export type PanelEl = {
 export type PanelT = {
   id: string;
   bg: string;
+  photo?: string;        // 真人底图路径（有则替代卡通 bg）
+  text_zone?: string;    // 'right' | 'left'（photo 模式文字放哪侧）
   start: number;
   end: number;
   count: number;
@@ -256,6 +258,48 @@ export const PanelLayer: React.FC<{ panel: PanelT }> = ({ panel }) => {
   const frame = useCurrentFrame();
   const dur = Math.max(1, Math.round((panel.end - panel.start) * FPS));
   const push = 1 + 0.03 * Math.min(1, frame / dur);
+
+  // 真人底图模式：有 photo 字段
+  if (panel.photo) {
+    const zone = panel.text_zone ?? 'right';
+    // Ken Burns：缓慢推进 + 微移
+    const t = Math.min(1, frame / dur);
+    const scale = 1.08 + 0.06 * t;
+    const panX = zone === 'right'
+      ? interpolate(t, [0, 1], [-1, 1])    // 人物在左 → 画面往右移
+      : interpolate(t, [0, 1], [1, -1]);   // 人物在右 → 画面往左移
+    return (
+      <AbsoluteFill style={{ backgroundColor: '#0a0a0a', overflow: 'hidden' }}>
+        <Img
+          src={staticFile(panel.photo)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: `scale(${scale}) translateX(${panX}%)`,
+            transformOrigin: '50% 35%',
+          }}
+        />
+        {/* 文字侧压暗 */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: zone === 'right'
+              ? 'linear-gradient(to right, transparent 0%, transparent 42%, rgba(8,6,4,0.78) 58%, rgba(8,6,4,0.88) 100%)'
+              : 'linear-gradient(to left, transparent 0%, transparent 42%, rgba(8,6,4,0.78) 58%, rgba(8,6,4,0.88) 100%)',
+          }}
+        />
+        {panel.elements.map((el, i) => (
+          <El key={i} el={el} frame={frame} />
+        ))}
+      </AbsoluteFill>
+    );
+  }
+
+  // 卡通底板模式（原有）
   return (
     <AbsoluteFill style={{ backgroundColor: PAPER, overflow: 'hidden' }}>
       <Img
