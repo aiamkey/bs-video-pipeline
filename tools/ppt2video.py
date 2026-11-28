@@ -1,4 +1,4 @@
-r"""把自动播放的 PPT 渲成 MP4 —— 和原片一样的「一口气看完」版本。
+﻿r"""把自动播放的 PPT 渲成 MP4 —— 和原片一样的「一口气看完」版本。
 
 用法：
     python tools\ppt2video.py                                   # 默认出 1280x720 / 30fps / 0.5s 转场
@@ -63,6 +63,39 @@ def page_durations(pptx: pathlib.Path) -> list[float]:
     return durs
 
 
+def page_kinds(pptx: pathlib.Path) -> list[str]:
+    """读每页的转场类型（<p:transition> 的子元素名），没有就 fade。"""
+    prs = Presentation(str(pptx))
+    kinds: list[str] = []
+    for s in prs.slides:
+        tr = s._element.find(qn("p:transition"))
+        kind = "fade"
+        if tr is not None:
+            for ch in tr:
+                if isinstance(ch.tag, str) and ch.tag.startswith("{"):
+                    kind = ch.tag.split("}")[1]
+                    break
+        kinds.append(kind)
+    return kinds
+
+
+# PowerPoint 转场 → ffmpeg xfade 效果。近似映射：方向感强的走 slide/wipe，
+# 闪光类走 fadewhite，认不出的一律 fade（宁可平淡，不要跳帧）。
+XFADE_MAP = {
+    "push": "slideleft",
+    "pull": "slideright",
+    "cover": "wipeup",
+    "uncover": "wipedown",
+    "wipe": "wipeleft",
+    "split": "split",
+    "zoom": "zoomin",
+    "dissolve": "dissolve",
+    "fade": "fade",
+    "newsflash": "fadewhite",
+    "cut": "fade",
+}
+
+
 def render_pages(pptx: pathlib.Path, outdir: pathlib.Path) -> list[pathlib.Path]:
     # libreoffice-kit 要求目标目录不存在
     if outdir.exists():
@@ -92,6 +125,7 @@ def build_video(
     h: int = 720,
     fps: int = 30,
     trans: float = 0.5,
+    kinds: list[str] | None = None,
     workdir: pathlib.Path | None = None,
     voice: pathlib.Path | None = None,
     voice_at: float = 0.0,
@@ -123,8 +157,10 @@ def build_video(
         for i in range(1, len(pages)):
             off = acc - trans
             nxt = f"x{i}"
+            kind = (kinds[i] if kinds and i < len(kinds) else "fade")
+            effect = XFADE_MAP.get(kind, "fade")
             parts.append(
-                f"[{cur}][v{i}]xfade=transition=fade:duration={trans}:offset={off:.3f}[{nxt}]"
+                f"[{cur}][v{i}]xfade=transition={effect}:duration={trans}:offset={off:.3f}[{nxt}]"
             )
             cur = nxt
             acc = acc + durs[i] - trans
@@ -175,11 +211,13 @@ def main() -> None:
     pptx = pathlib.Path(a.pptx)
     out = pathlib.Path(a.out)
     durs = page_durations(pptx)
+    kinds = page_kinds(pptx)
     pages = render_pages(pptx, out.parent / "_ppt2video" / "pages")
     print(f"[vid] 渲染出 {len(pages)} 页")
     build_video(
         pages, durs, out,
         trans=0.0 if a.no_xfade else a.trans,
+        kinds=kinds,
         workdir=out.parent / "_ppt2video",
         voice=pathlib.Path(a.voice) if a.voice else None,
         voice_at=a.voice_at,

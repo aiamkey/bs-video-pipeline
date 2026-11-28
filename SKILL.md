@@ -909,8 +909,14 @@ python tools\replica_render.py --spec "qa2\replica\out\<片名>.spec.json" `
 ### 8.7.1 生成 PPT：`make_signal_ppt.py`
 
 ```powershell
-python tools\make_signal_ppt.py      # → deliver\七个信号-图文版.pptx
+python tools\make_signal_ppt.py                 # 图文版 → deliver\七个信号-图文版.pptx
+python tools\make_signal_ppt.py --no-text       # 纯图版 → deliver\七个信号-动画版.pptx
 ```
+
+**纯图版**（`--no-text`）不放标题、副文、页码、遮罩，一页就是一张画，节奏交给转场：
+每页 3.6 s、`spd="med"`（比 fast 顺），20 页 62.5 s。转场按**连贯序列**排——`push` 连推
+（像镜头一直往前）、`cover` 叠层、`wipe` 横擦、`zoom` 推近，转折和结尾才用 `fade` 断开节奏；
+**不要用 newsflash**，闪光会打断连贯感。
 
 - 20 页 = 封面 + 开场 + 两组各 7 条 + 转折 + 提醒 + 行动 + 结尾；每页满版铺一张插画
   （1672×941 塞进 13.333×7.5 in，拉伸 0.06%，肉眼看不出）。
@@ -927,7 +933,6 @@ python tools\make_signal_ppt.py      # → deliver\七个信号-图文版.pptx
   内页从 3.45 in 起从透明渐变到 88% 黑，封面把字压到主体反侧、横向渐变。
 
 ### 8.7.2 让它自己播（`advTm`）
-
 `<p:transition>` 上加 `advTm="毫秒"` 就是「自动换片」——**不要再另外写 `<p:showPr>`**，
 它不在 `CT_Presentation` 的 schema 序列里，硬插会让 PowerPoint 弹「需要修复」。
 每页时长可以按文案长度算：`5.0 ~ 9.0 s`，20 页合计约 107 s。
@@ -939,7 +944,11 @@ python tools\ppt2video.py                                  # 无声版
 python tools\ppt2video.py --voice qa2\replica\voice-ppt.wav # 带旁白
 ```
 
-读每页 `advTm` → LibreOffice Kit 渲 PNG → ffmpeg `xfade` 串接。
+读每页 `advTm` → LibreOffice Kit 渲 PNG → ffmpeg `xfade` 串接。**转场按页取**：
+`page_kinds()` 读每页 `<p:transition>` 的子元素名，`XFADE_MAP` 映射成 ffmpeg 效果
+（push→slideleft、cover→wipeup、wipe→wipeleft、zoom→zoomin、dissolve→dissolve、
+newsflash→fadewhite，认不出的回退 fade）。写死 `xfade=transition=fade` 的话，
+PPT 里排好的推/擦全变成淡入淡出，衔接感全丢。
 
 **三个坑**
 

@@ -69,6 +69,31 @@ FLASH = [
     "uncover", "newsflash", "dissolve", "newsflash", "zoom",
 ]
 
+# 纯图版（不要文字）用的**连贯**转场序列：方向感强、不留停顿
+# push 连推 → 覆盖叠层 → 擦除 → 溶解 → 缩放收尾，全程 med 速度
+FLOW = [
+    "fade",         # 1 封面：淡入
+    "push",         # 2 开场推进
+    "push",         # 3 连推，像镜头往前
+    "cover",        # 4 叠一层
+    "push",         # 5
+    "cover",        # 6
+    "push",         # 7
+    "wipe",         # 8 横向擦
+    "push",         # 9
+    "fade",         # 10 转折：断一下节奏
+    "zoom",         # 11 拉近
+    "cover",        # 12
+    "push",         # 13
+    "wipe",         # 14
+    "cover",        # 15
+    "zoom",         # 16
+    "push",         # 17
+    "dissolve",     # 18 提醒：柔化
+    "zoom",         # 19 行动：推近
+    "fade",         # 20 结尾：收
+]
+
 NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main"
 NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
@@ -159,7 +184,8 @@ def add_text(slide, x, y, w, h, runs, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP
     return tb
 
 
-def build() -> pathlib.Path:
+def build(no_text: bool = False, out: pathlib.Path | None = None) -> pathlib.Path:
+    """no_text=True 出纯图版：只有画 + 转场，不放任何文字与遮罩。"""
     missing = [i for i, *_ in PAGES if not (IMG / f"p{i:03d}.jpg").exists()]
     if missing:
         raise SystemExit(f"[ppt] 缺图：{missing}")
@@ -172,6 +198,12 @@ def build() -> pathlib.Path:
     for n, (idx, kicker, title, sub) in enumerate(PAGES, 1):
         s = prs.slides.add_slide(blank)
         s.shapes.add_picture(str(IMG / f"p{idx:03d}.jpg"), 0, 0, Inches(W), Inches(H))
+
+        if no_text:
+            # 纯图：不放文字、不放遮罩，每页 3.6 秒，转场按 FLOW 走
+            set_transition(s, FLOW[(n - 1) % len(FLOW)], 3600, speed="med")
+            continue
+
         trans = FLASH[(n - 1) % len(FLASH)]
 
         if n == 1:
@@ -228,16 +260,20 @@ def build() -> pathlib.Path:
 
     # 注意：不写 presentation.xml 的 <p:showPr>。advTm 已足够让放映自动翻页，
     # 而 showPr 不在 CT_Presentation 的 schema 序列里，硬插会让 PowerPoint 提示「需要修复」。
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    prs.save(OUT)
-    return OUT
+    target = out or OUT
+    target.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(target)
+    return target
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--open", action="store_true", help="出完直接打开")
+    ap.add_argument("--no-text", action="store_true",
+                    help="纯图版：不放标题/副文/页码，只做画面与转场衔接")
     a = ap.parse_args()
-    out = build()
+    target = ROOT / "deliver" / ("七个信号-动画版.pptx" if a.no_text else "七个信号-图文版.pptx")
+    out = build(no_text=a.no_text, out=target)
     print(f"[ppt] 写出 {out}  {out.stat().st_size / 1024 / 1024:.2f} MB  页数 {len(PAGES)}")
     if a.open:
         subprocess.Popen(["cmd", "/c", "start", "", str(out)], shell=False)
