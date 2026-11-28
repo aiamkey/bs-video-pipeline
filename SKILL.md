@@ -776,6 +776,77 @@ $PY = "E:\miniconda\envs\JupyterProject\python.exe"   # 见下方「解释器」
    `out/assets/p000.jpg…`，后跑的片会把先前片的 p000+ 覆盖掉 —— 草稿因为已本地化看不出来，
    但重导旧草稿就会拿到错的画面。现已按 spec 名分目录，旧 spec 需重跑一次 `replica_shots`。
 
+### 8.6.1 换画面：`replica_redraw.py`（把别人的截图换成自己的插画）
+
+结构级复刻用的还是原片截图；要交自己的片子，画面得重画。这一步就是干这个的：
+**按每屏的字幕语义生成一张插画，替换该屏的 `assets[].file`**，其余（屏位/字幕/章节/时长）不动。
+
+```powershell
+# 先小样 6 屏看风格对不对（花 6 张的钱）
+python tools\replica_redraw.py --spec "qa2\replica\out\<片名>.spec.json" --only 0,2,7,11,16,21
+# 满意后全量（163 屏约 40–110 分钟，后台跑）
+python tools\replica_redraw.py --spec "qa2\replica\out\<片名>.spec.json" --apply
+# 后悔了
+python tools\replica_redraw.py --spec ... --revert
+```
+
+- **通道**：`qa2/gpt/relay.json`（apimart 中转，`model=gpt-image-2`，异步 task → 轮询 → 取 `url[0]`）。
+  `tools/img.py` 的 `gen_openai()` 已经把这套封好了（`size="16:9"`、`resolution=1K`）。
+- **风格是一条常量** `STYLE`（极简扁平矢量、暖米白底、珊瑚橙+墨绿+暖灰、大量留白、**画面里不要任何文字**），
+  按 `mode` 再分模板（scene=日常场景 / title=符号化图形 / chat=两人对话气泡留空 / doc=清单横线代替文字）。
+  要换画风改这一处，别逐屏改。
+- **语义来源是字幕**：`screen_texts()` 把该屏所有字幕拼成 ≤60 字的主题，塞进模板。
+  所以反过来说——**字幕切分质量直接决定画面质量**，§8.6 的 `--sub-chars 24` 别乱调大。
+- **`--apply` 每 10 屏增量存盘**：全量要跑一两个小时，中途断了不会白跑，重跑会覆盖同名。
+- 落盘：`qa2/replica/out/assets/<片名>/redraw/pNNN.jpg`（原帧 `pNNN.jpg` 保留，随时可回退）。
+- **交付前必须人眼过一遍**：即使 prompt 写了「不要文字」，模型仍会偶发写出标题字/乱码，
+  `--only` 挑那几屏重画即可。
+
+### 8.6.2 换声音：`replica_voice.py` + `replica_assemble.py`（声音克隆）
+
+五步，缺一步都不出声：
+
+```powershell
+# 1) 从原片挑 10–20s 最干净的人声当参考（本地 ffmpeg，不花钱）
+python tools\replica_voice.py extract-ref "qa2\replica\segs-<片名>.json" "qa2\replica\ref.wav" --src "<原片>"
+# 2) 建克隆音色（计费、且不会自动删除）
+python tools\replica_voice.py create "qa2\replica\ref.wav" --yes
+# 3) 等部署 OK
+python tools\replica_voice.py wait
+# 4) 逐句合成（392 段约 90 分钟，断点续跑：已存在的 wav 会跳过）
+python tools\replica_voice.py speak "qa2\replica\out\<片名>.spec.json" "qa2\replica\voice-out" --yes
+# 5) 按原片时间轴把分段铺回整条
+python tools\replica_assemble.py --spec "qa2\replica\out\<片名>.spec.json" --voice-dir "qa2\replica\voice-out" -o "qa2\replica\voice.wav"
+```
+
+三个必须知道的硬约束（都真实踩过）：
+
+1. **要带 `Client` 的 dashscope 2.x。** `voices.create / audio.tts.connect` 是 2.0 才有的接口，
+   本机 conda 环境里那把 1.26.4 没有 `Client`。**别动 conda 环境**，建个独立 venv 最干净：
+   ```powershell
+   D:\pythons\python3.12\python.exe -m venv C:\Users\<你>\AppData\Local\venv-clone
+   & "$venv\Scripts\python.exe" -m pip install dashscope==2.1.2 requests -i https://pypi.tuna.tsinghua.edu.cn/simple
+   ```
+   venv **别放 OneDrive 目录**（pip 装包会被同步拖到十分钟以上，实测卡死）。
+2. **跑之前清 proxy 环境变量。** 系统 `no_proxy` 里带 `::1,[::1]` 会让 httpx 抛
+   `InvalidURL: Invalid port: ':1]'`，而且 PowerShell 里 `NO_PROXY`/`no_proxy` 双份键会让
+   `Get-ChildItem env:` 直接报「same key already added」。稳的写法：
+   ```powershell
+   foreach($n in @("HTTP_PROXY","HTTPS_PROXY","ALL_PROXY","http_proxy","https_proxy","all_proxy","NO_PROXY","no_proxy")){
+     [System.Environment]::SetEnvironmentVariable($n,$null,"Process") }
+   ```
+3. **语速调不动，只能靠装配端压。** 这个克隆音色忽略 `speech_rate`（1.08 与 2.0 的段长只差 4%），
+   而抖音原片语速很快（实测 5.2 字/秒），所以逐句合成会有大半超格。
+   `replica_assemble.py` 对超格段用 ffmpeg `atempo` **保音高**压缩：
+   `--max-tempo 1.6` 实测 36 段超格里修好 34、只截断 2；1.35 会截 7 段，2.0 只多修 1 段但听感变糙。
+   `--fit raw` 不压（段会盖住下一句开头，只适合先听整体），`--fit trim` 硬切（丢字）。
+   报告落在 `voice-out/assemble-report.json`，每段的窗长/段长/处理方式都在里面。
+
+两个接口坑：
+
+- `speak` 的输入**必须是 spec.json**（它有 `subs`）。直接喂裸 segs 数组会 `'list' object has no attribute 'get'`。
+- `extract-ref` 的**第一个位置参数是 segs.json，不是视频**；视频走 `--src`。
+
 ---
 
 ## 9. 现状

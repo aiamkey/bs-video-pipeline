@@ -281,27 +281,44 @@ def _sdk_speak_one(text: str, c: dict) -> bytes:
     client = dashscope_client(c)
     pcm = bytearray()
     errs = []
-    with client:
-        with client.audio.tts.connect(
-            model=c["speak_model"], voice=c["voice_id"],
-            format="pcm", sample_rate=int(c.get("sample_rate") or 24000),
-            timeout=float(c.get("timeout") or 180),
-        ) as session:
-            def receiver():
-                try:
-                    for frame in session.events():
-                        if isinstance(frame, bytes):
-                            pcm.extend(frame)
-                except Exception as e:
-                    errs.append(f"{type(e).__name__}: {str(e)[:240]}")
-            th = threading.Thread(target=receiver, daemon=True)
-            th.start()
-            session.send_text(text)
-            session.stop()
-            th.join(timeout=float(c.get("timeout") or 180))
+    kw = dict(
+        model=c["speak_model"], voice=c["voice_id"],
+        format="pcm", sample_rate=int(c.get("sample_rate") or 24000),
+        timeout=float(c.get("timeout") or 180),
+    )
+    rate = float(c.get("rate") or 1.0)
+    if abs(rate - 1.0) > 1e-6:
+        # 复刻必须贴近原片语速（原片是抖音快语速），不抬 rate 就会有大量段超格、
+        # 只能靠装配时 atempo 硬压 → 金属感。这里优先在合成端抬语速。
+        kw["speech_rate"] = rate
+
+    def _once(kwargs: dict) -> bytes:
+        buf = bytearray()
+        with client:
+            with client.audio.tts.connect(**kwargs) as session:
+                def receiver():
+                    try:
+                        for frame in session.events():
+                            if isinstance(frame, bytes):
+                                buf.extend(frame)
+                    except Exception as e:
+                        errs.append(f"{type(e).__name__}: {str(e)[:240]}")
+                th = threading.Thread(target=receiver, daemon=True)
+                th.start()
+                session.send_text(text)
+                session.stop()
+                th.join(timeout=float(c.get("timeout") or 180))
+        return bytes(buf)
+
+    try:
+        pcm = _once(kw)
+    except TypeError:
+        # 老 SDK / 该音色不支持 speech_rate：退回 1.0 语速，靠装配端压
+        kw.pop("speech_rate", None)
+        pcm = _once(kw)
     if errs:
         raise RuntimeError("; ".join(errs))
-    return bytes(pcm)
+    return pcm
 
 
 def _write_wav(out: Path, pcm: bytes, rate: int):
@@ -335,6 +352,9 @@ def cmd_speak(spec_path: Path, out_dir: Path, c: dict, limit: int = 0):
             if not text:
                 continue
             out = out_dir / f"{i:04d}.wav"
+            if out.exists() and out.stat().st_size > 1000:   # 断点续跑：已合成的跳过
+                ok += 1
+                continue
             try:
                 pcm = _sdk_speak_one(text, c)
                 if not pcm:
