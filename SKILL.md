@@ -847,6 +847,34 @@ python tools\replica_assemble.py --spec "qa2\replica\out\<片名>.spec.json" --v
 - `speak` 的输入**必须是 spec.json**（它有 `subs`）。直接喂裸 segs 数组会 `'list' object has no attribute 'get'`。
 - `extract-ref` 的**第一个位置参数是 segs.json，不是视频**；视频走 `--src`。
 
+### 8.6.3 出片：`replica_render.py`（spec 直接渲 MP4，不绕剪映/Remotion）
+
+交付要一条 MP4。spec 里已经有渲片需要的全部事实（每屏起止 + 代表图、每句字幕、音轨），
+ffmpeg 就够，不必绕 Remotion（那是「自己写剧本」那条线的引擎，数据格式不一样）。
+
+```powershell
+python tools\replica_render.py --spec "qa2\replica\out\<片名>.spec.json" `
+    -o "qa2\replica\out\<片名>.mp4" --voice "qa2\replica\voice.wav"
+# 只要画面不要字幕：加 --no-subs；画质：--crf 18（默认 20）
+```
+
+- 屏按 `scenes[].s / e` 铺，屏间空档自动用米白占位补满；缺图也走占位，不会断片。
+- 字幕从 `subs[]` 生成 SRT 再用 `subtitles` 滤镜烧上去（`Microsoft YaHei` 22 号、白字黑边、`MarginV=28`）。
+- 音轨用 `-af apad -shortest -t <总时长>` 钉死长度，避免音轨比画面短导致尾帧被砍。
+- 实测：607.11s 片 → 163 屏 / 392 字幕 / 1280x720 / 30fps，成片 **10:07.11**，与原片时长**零误差**。
+
+**四个坑（全是同一个病根：ffmpeg 的 cwd 被指到临时目录）**
+
+1. **concat 列表里的图片必须写绝对路径。** 相对路径是相对 `list.txt` 所在目录解析的，
+   而 list.txt 在临时目录 → 一定 `Impossible to open`。用 `im.resolve().as_posix()`。
+2. **输出文件也要绝对路径**，否则 `Error opening output file`。
+3. **末项要再写一遍 `file`**，concat demuxer 会吞掉最后一帧（已知怪癖）。
+4. **别用 `tempfile.TemporaryDirectory()`**：退出时立刻删目录，而 ffmpeg 的 cwd 还指着它就报错。
+   改 `mkdtemp` 并把现场（list.txt / sub.srt）留着，出问题能直接看。
+
+**交付前必须全量重画**。没重画的屏用的还是原片截图，**原片自带的字幕会跟我们烧的字幕叠在一起**
+（实测 300s 处能看到两层字）。`replica_redraw.py` 全量跑完再 `replica_render.py`，才是干净片子。
+
 ---
 
 ## 9. 现状
