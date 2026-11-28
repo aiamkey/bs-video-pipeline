@@ -901,6 +901,69 @@ python tools\replica_render.py --spec "qa2\replica\out\<片名>.spec.json" `
 
 ---
 
+## 8.7 同一批图再做一份 PPT（可编辑 + 能自播放）
+
+复刻出来的 163 张插画，除了出视频，还能顺手做一份**能自动播放的 PPT**——17 分钟大片
+压成一份 100 秒的图文版，横屏 16:9，给「不想看长视频」的场合用。
+
+### 8.7.1 生成 PPT：`make_signal_ppt.py`
+
+```powershell
+python tools\make_signal_ppt.py      # → deliver\七个信号-图文版.pptx
+```
+
+- 20 页 = 封面 + 开场 + 两组各 7 条 + 转折 + 提醒 + 行动 + 结尾；每页满版铺一张插画
+  （1672×941 塞进 13.333×7.5 in，拉伸 0.06%，肉眼看不出）。
+- 文案**重写**，不照抄原片台词；原片 ASR 有错别字（「亚根」应是「压根」）不要带进去。
+- **切换效果只能写 XML**：python-pptx 没有 transition API。插在 `p:clrMapOvr` 之后：
+  ```xml
+  <p:transition xmlns:p="…presentationml/2006/main" spd="fast" advTm="5200"><p:newsflash/></p:transition>
+  ```
+  PowerPoint 里那个「闪光」就对应 `<p:newsflash/>`。ECMA 里可选的还有
+  dissolve / zoom / blinds / checker / circle / comb / cover / cut / diamond / fade /
+  plus / pull / push / random / randomBar / split / strips / wedge / wheel / wipe。
+- **渐变遮罩代替纯色块**：整块半透明黑会在截图里留下硬边，像贴了条黑胶带。
+  往 `spPr` 的 `a:prstGeom` 后面插 `<a:gradFill rotWithShape="1"><a:gsLst>…<a:lin ang="…"/></a:gradFill>`，
+  内页从 3.45 in 起从透明渐变到 88% 黑，封面把字压到主体反侧、横向渐变。
+
+### 8.7.2 让它自己播（`advTm`）
+
+`<p:transition>` 上加 `advTm="毫秒"` 就是「自动换片」——**不要再另外写 `<p:showPr>`**，
+它不在 `CT_Presentation` 的 schema 序列里，硬插会让 PowerPoint 弹「需要修复」。
+每页时长可以按文案长度算：`5.0 ~ 9.0 s`，20 页合计约 107 s。
+
+### 8.7.3 出视频：`ppt2video.py`
+
+```powershell
+python tools\ppt2video.py                                  # 无声版
+python tools\ppt2video.py --voice qa2\replica\voice-ppt.wav # 带旁白
+```
+
+读每页 `advTm` → LibreOffice Kit 渲 PNG → ffmpeg `xfade` 串接。
+
+**三个坑**
+
+1. **`-filter_complex_script` 在这台 ffmpeg 上不认**（`Unrecognized option`）→ 直接传
+   `-filter_complex <字符串>`；20 段才 2 KB，远低于 Windows 命令行 32 KB 上限。
+2. **LibreOffice Kit 的 `--output-dir` 必须不存在**，否则 `EEXIST: file already exists` → 先删。
+3. bundled python 没有 `imageio_ffmpeg`，要回退到 conda 里那个 ffmpeg 路径。
+
+### 8.7.4 配旁白：`ppt_narration.py`
+
+```powershell
+python tools\ppt_narration.py     # spec → speak → assemble → 出带声视频
+```
+
+- 按 `advTm` 算时间轴（页起点累加、每页扣掉 0.5 s 转场重叠），造一份只含 20 条字幕的 spec，
+  复用 §8.6.2 的克隆音色念出来，再 `replica_assemble.py` 铺回整条音轨。
+- **三个解释器分工**（这台机器上）：读 pptx 用 bundled python（有 python-pptx）、
+  `speak` 用 `C:\Users\张宇\AppData\Local\venv-clone\Scripts\python.exe`（有 dashscope 2.x）、
+  `assemble` 用 conda python（有 imageio-ffmpeg）。
+- 实测：20 段旁白全部成功、有声占比 65.3%、成片 107.18 s / 5.51 MB，
+  三段平均音量 −18.8 / −18.0 / −18.7 dB（均匀，无断音）。
+
+---
+
 ## 9. 现状
 
 **已完成**

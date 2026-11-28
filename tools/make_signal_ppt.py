@@ -73,18 +73,45 @@ NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main"
 NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
 
-def set_transition(slide, kind: str, speed: str = "fast") -> None:
-    """插 <p:transition>，位置在 clrMapOvr 之后、timing 之前。"""
+def set_transition(slide, kind: str, adv_ms: int = 0, speed: str = "fast") -> None:
+    """插 <p:transition>，位置在 clrMapOvr 之后、timing 之前。
+
+    adv_ms > 0 时写 advTm —— 这就是「自动换片」：放映到时间自动翻页，不用点。
+    """
     sld = slide._element
     for old in sld.findall(qn("p:transition")):
         sld.remove(old)
+    adv = f' advTm="{adv_ms}"' if adv_ms else ""
     el = etree.fromstring(
-        f'<p:transition xmlns:p="{NS_P}" spd="{speed}"><p:{kind}/></p:transition>'
+        f'<p:transition xmlns:p="{NS_P}" spd="{speed}"{adv}><p:{kind}/></p:transition>'
     )
     anchor = sld.find(qn("p:clrMapOvr"))
     if anchor is None:
         anchor = sld.find(qn("p:cSld"))
     anchor.addnext(el)
+
+
+def page_seconds(title: str, sub: str) -> float:
+    """一页停留多久：按字数估读完的时间，夹在 5–9 秒。"""
+    n = len(title) + len(sub)
+    return max(5.0, min(9.0, 4.0 + n * 0.08))
+
+
+def enable_auto_show(prs) -> None:
+    """presentation.xml 里开循环放映 + 用排练时间，配合每页 advTm 就是自动播放。"""
+    root = prs.part._element
+    for old in root.findall(qn("p:showPr")):
+        root.remove(old)
+    el = etree.fromstring(
+        f'<p:showPr xmlns:p="{NS_P}" loop="1" showAnimation="1" showScrollbar="0">'
+        f"<p:present/></p:showPr>"
+    )
+    # showPr 排在 notesSz 之后（schema 顺序），插在 defaultTextStyle 前最稳
+    anchor = root.find(qn("p:defaultTextStyle"))
+    if anchor is not None:
+        anchor.addprevious(el)
+    else:
+        root.append(el)
 
 
 def grad_rect(slide, x, y, w, h, stops, ang=5400000):
@@ -166,7 +193,7 @@ def build() -> pathlib.Path:
                 s, Inches(7.1), Inches(6.15), Inches(5.6), Inches(0.6),
                 [("—— 从一条抖音片反推出来的判断清单", 14, ORANGE, True, 0)],
             )
-            set_transition(s, trans)
+            set_transition(s, trans, 5000)
             continue
 
         # 内页：底部渐变压暗，字压在下三分之一
@@ -197,8 +224,10 @@ def build() -> pathlib.Path:
             [(f"{n:02d} / {len(PAGES)}", 12, GREY, False, 0)],
             align=PP_ALIGN.RIGHT,
         )
-        set_transition(s, trans)
+        set_transition(s, trans, int(page_seconds(title, sub) * 1000))
 
+    # 注意：不写 presentation.xml 的 <p:showPr>。advTm 已足够让放映自动翻页，
+    # 而 showPr 不在 CT_Presentation 的 schema 序列里，硬插会让 PowerPoint 提示「需要修复」。
     OUT.parent.mkdir(parents=True, exist_ok=True)
     prs.save(OUT)
     return OUT
